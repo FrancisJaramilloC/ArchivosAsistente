@@ -1,0 +1,426 @@
+﻿SoftwareQuality Assurance for High Performance Computing
+Containers
+Matthew Sgambati
+Matthew Anderson
+
+matthew.sgambati@inl.gov
+matthew.anderson2@inl.gov
+Idaho National Laboratory
+Idaho Falls, Idaho, USA
+
+ABSTRACT patching. The capability for software containers to package nec-
+Software containers are a key channel for delivering portable and essary dependencies and components so that scientific computing
+reproducible scientific software in high performance computing results are both reproducible and portable has driven the creation of
+(HPC) environments. HPC environments are different from other containers for a wide range of scientific computing codes including
+types of computing environments primarily due to usage of the mes- GROMACS [4], NAMD [10], and the MOOSE framework [8]. There
+sage passing interface (MPI) and drivers for specialized hardware to are multiple container registries providing containerized software
+enable distributed computing capabilities. This distinction directly including Docker Hub [2], NVIDIA [11], and Sylabs [13] that pro-
+impacts how software containers are built for HPC applications vide a container as a single file that a user can download and then
+and can complicate software quality assurance efforts including run the software without needing to request a system administra-
+portability and performance. This work introduces a strategy for tor to install the software or any dependencies for them. There
+building containers for HPC applications that adopts layering as a are also many other Open Container Initiative registries, such as
+mechanism for software quality assurance. The strategy is demon- Harbor [6], that provide a channel for distributing containerized
+strated across three different HPC systems, two of them petaflops software outside of the large container registries. Because of docker
+scale with entirely different interconnect technologies and/or pro- breakout risk [9], privilege escalation, requiring a daemon, etc.,
+cessor chipsets but running the same container. Performance con- many scientific computing software containers use the Singular-
+sequences of the containerization strategy are found to be less than ity and/or Apptainer platform to satisfy security requirements on
+5-14% while still achieving portable and reproducible containers shared computing resources.
+for HPC systems. Scientific computing software built for high performance com-
+
+puting (HPC) systems presents an additional complication for con-
+KEYWORDS tainer builders due to the need to integrate drivers and software
+singularity, containers, message passing interface, software quality stacks for specialized hardware specific to HPC systems as well
+assurance as the frequent integration of the message passing interface (MPI)
+
+libraries [5] used for leveraging distributed computing. There are
+ACM Reference Format: three modalities by which MPI can be incorporated into a software
+Matthew Sgambati and Matthew Anderson. 2023. Software Quality As- container that are distinguished by where the MPI libraries are
+surance for High Performance Computing Containers. In Practice and Ex- installed. In the container-only modality, the MPI libraries are only
+perience in Advanced Research Computing (PEARC ’23), July 23–27, 2023, installed in the container. While this is the simplest approach, the
+Portland, OR, USA. ACM, New York, NY, USA, 12 pages. https://doi.org/10.
+1145/3569951.3593596 container will not be able to run across multiple nodes of the host
+
+system. In the bind modality, the MPI libraries are only installed on
+1 INTRODUCTION the host system but not in the container. The MPI libraries from the
+
+host are bound into the container at run time, which allows it to
+Quality assurance in scientific computing software is fundamen- run across distributed systems. However, in order for this modality
+tal to research computing and consists of multiple components to work, the host operating system and the container operating
+including verification and validation, reproducibility, and porta- system must be compatible. In the hybrid modality [12], both the
+bility. Additional components generally considered tangential to container and the host have MPI installed. For this to work on
+computing software quality assurance but critical to the long-term distributed systems, the host MPI and the container MPI need only
+usability of an application workload are security and insulation be application binary interface (ABI) compatible. The bind and hy-
+against dependency updates occasioned by regular system security brid approaches are the most compelling for containers on HPC
+
+systems, but both present not only portability challenges but also
+software quality assurance issues because of the reliance on the
+
+This work is licensed under a Creative Commons Attribution International host MPI installation and drivers for specialized hardware specific
+4.0 License. to the host. To address this concern, this work presents a hybrid
+
+container strategy that leverages layering where components of the
+PEARC ’23, July 23–27, 2023, Portland, OR, USA
+© 2023 Copyright held by the owner/author(s). software stack are placed in separate containers that progressively
+ACM ISBN 978-1-4503-9985-2/23/07. build off of each other until reaching the application layer. Changes
+https://doi.org/10.1145/3569951.3593596
+
+117
+
+
+
+PEARC ’23, July 23–27, 2023, Portland, OR, USA Sgambati, et al.
+
+in host system interconnect drivers or MPI installations require consequence of breaking long-term reproducibility. Canon et al.
+updating an isolated layer and then rebuilding dependent layers to observe that, at present, the techniques for using containers on
+continue to ensure software quality assurance. The strategy relies HPC systems are still ad hoc.
+on the following assumptions to help minimize the amount of layer This work complements those studies by detailing an HPC con-
+rebuilds to improve longevity: tainer strategy that is portable across supercomputers even if they
+
+(1) Host systems will use a long term support (LTS) version of are hosting completely different interconnect technologies and min-
+drivers and/or software stacks when possible; imizes the risk of breaking long-term reproducibility. This strategy
+
+(2) Host system administrators will install an ABI-compatible does have a performance consequence, and this study empirically
+version of MPI if one does not exist on the target system. explores that performance impact.
+
+To demonstrate and explore the performance consequences of 3 CONTAINER STRATEGY
+this strategy, this work examines containers for three classes of
+applications: microbenchmarks, mini applications, and full HPC ap- This section presents a hybrid container strategy to provide trace-
+plications. The Ohio State University benchmarks [15] serve as the ability and portability across different supercomputers while also
+demonstration formicrobenchmarks while the LULESHminiapp [7] minimizing the risk of breaking long-term reproducibility. Example
+serves themini application space. The full HPC application explored recipe files for the strategy are provided to explicitly illustrate the
+with this strategy is MCNP 6.2.0 [17]. These application containers different layers and the traceability elements added to the each
+are tested on three different systems, two of them petaflops scale, layer.
+with different operating systems, chipsets, and network technolo- There are three key components to the strategy:
+gies. The performance of each container is compared against the • HPC application containers are built from stacks of individ-
+natively compiled and optimized version of the application on each ual containers called layers. These layers compartmentalize
+supercomputing system. different software and driver components.
+
+The structure of this work is as follows. In Section 2, a review of • Specialized hardware drivers and software stacks for inter-
+alternative container build strategies for HPC systems is examined connects are grouped into a single layer; MPI libraries are
+and related work is discussed. In Section 3, the container strat- likewise grouped into their own layer. Portability among
+egy for HPC proposed in this work is detailed and discussed. In HPC systems is achieved via ABI compatibility of the MPI
+Section 4, the performance results for the three classes of HPC libraries between host and container along with series com-
+applications that are containerized as part of this work are given patibility for interconnect drivers and software stacks. The
+and the performance consequences of the containerization strat- UCX framework is also leveraged in the container to assist
+egy are quantified. In Section 5, conclusions on the empirical tests with portability.
+of this containerization strategy are presented and future work is • Each layer of the container stack can be individually updated
+discussed. and is always reproducible by storing local mirrors of all
+
+layer components rather than relying on the internet for
+2 RELATEDWORK rebuilding the layer.
+Multiple performance studies with a discussion on portability have This strategy is designed to provide maximum traceability due to
+been done for HPC container strategies. Torrez et al. [14] reported the local static mirrors and separating components into different
+minimal or no performance impact due to using an HPC container layers in addition to improving the portability and reproducibility
+but tested portability using two different supercomputers with needed for software quality assurance.
+the exact same OmniPath interconnect, motherboard, and chipset. In a hybrid modality such as detailed in this strategy, the con-
+That study used SysBench, STREAM, and HPCG as applications for tainer has both an MPI installation as well as the necessary inter-
+memory and performance analysis and built the containers using connect drivers and software stacks that can be independent of
+Charliecloud, Shifter, and Singularity as the container platforms the system MPI installation and system interconnect drivers and
+within a hybrid modality. No full applications were included in software stacks. Unlike the bind modality, this hybrid approach
+the Torrez et al. study but they concluded that the performance does not require compatibility between the host operating system
+question is close to a solved problem. Wang et al. [16] followed a and the container operating system which substantially improves
+non-portable bind-modality strategy in their container performance portability. There are, however, two limitations to portability. This
+study and used four full applications as part of their investigation: first is that the MPI installed in the container must be ABI com-
+Weather Research Forecasting (WRF), the lattice gauge theoryMILC patible with the host MPI. This is a limitation typical of all hybrid
+code, NAMD, and GROMACS and only tested on one supercom- container approaches. For example, if MVAPICH2 is installed on
+puter thereby avoiding the question of portability across different the host, some ABI compatible MPI versions that could be used in
+supercomputing systems. Like Torrez et al., they also conclude that the container would include Intel MPI, MPICH, and MVAPICH2.
+containerized versions of HPC software did not sacrifice perfor- The second limitation is that the interconnect drivers and software
+mance comparedwith the native non-container installations. Canon stacks in the container must be series compatible with the host
+et al. [1] point out that the mechanisms needed to achieve porta- drivers and software stacks. For example, if the InfiniBand driver
+bility and reproducibility in containers can inadvertently cause and software stack on the host is version 5.1, the container would
+performance degradation. They point out that methods to leverage need to have InfiniBand driver and software stack versions also
+specialized HPC hardware in the container can have the unintended that are series compatible, e.g. 5.x. For portability across different
+
+118
+
+
+
+SoftwareQuality Assurance for High Performance Computing Containers PEARC ’23, July 23–27, 2023, Portland, OR, USA
+
+HPC systems with different network technologies, the drivers and Pulling components for a layer from the internet can present a
+software stacks for each would need to be included in the container. problem with regards to reproducibility and auditing. When con-
+For example, if the container will be used on a host system with tainer components are pulled from the internet, what happens in
+InfiniBand interconnect as well as on another host system with that space may not be reproducible. For example,
+OmniPath interconnect, series compatible drivers and software $ ap t i n s t a l l python
+stacks for each network technology would need to be included in
+the container. in a container recipe file won’t always give the same version. In
+
+A consequence of these portability conditions is that there will contrast, pulling from static locally stored mirrors helps ensure that
+be times it will be necessary to update the container’s version of each layer of the container stack can be fully rebuilt at any time
+MPI or interconnect drivers and software stacks in order to ensure without reproducibility concerns. This is the option employed in
+continued portability. Rebuilding a monolithic container would this strategy to reduce and/or eliminate reproducibility concerns.
+normally be required, but that also requires rebuilding multiple Additionally, each container layer is signed and then verified in the
+components that are unaffected by the updates needed for porta- next layer’s build step via the Fingerprint header in the definition
+bility. To avoid this a layering approach is used where operating files ensuring that layers are built with the expected sub-layers. Also,
+system, compilers, interconnect drivers and software stack, MPI the following host system attributes are added to each layer during
+libraries, and applications are all placed in separate containers. Com- the build process for audit purposes to assist with reproducibility if
+partmentalizing components into individual layers of the container building the layer on the same hardware is desired:
+enables the container builder to update only those pieces needed • CPU information
+to continue to ensure portability and long-term reproducibility. – Architecture
+These different layers are stacked with the layers least likely to – Model Name
+change near the bottom and the layers most likely to change near • uname information
+the top as illustrated in Figure 1. Rather than build a monolithic – Kernel name
+container by pulling everything from the internet all at once, using – Kernel release
+a layering approach it is possible to pull and modify only the pieces – Kernel version
+necessary for that layer, which not only reduces build time, but – Processor type
+minimizes the number of configuration items for an audit or during – Hardware platform
+verification and validation. When a layer needs to be updated and – Operating system
+rebuilt, only that layer and the layers above it have to be rebuilt To illustrate this strategy, an application executing “hello world"
+while layers below can be reused in the final stack. For example, using MPI is detailed in the following section with the Singularity
+because the interconnect driver series does not change frequently recipe files for each layer described. The Fingerprint headers as
+on HPC systems and sometimes lasts as long as 5-7 years, the inter- described above have been removed in the following example for
+connect driver layer is lower in the pyramid in Figure 1 than the clarity.
+MPI libraries which change more rapidly.
+
+3.1 "Hello World" Example
+The base container contains the operating system for which the
+entire stack will be based on. This layer is the only layer that
+reaches out to the internet and would have a recipe file similar
+to that illustrated in Figure 2. If tighter control of the base container
+operating system is required then a different bootstrap agent, such
+as yum, can used, which can be pointed to the static local mirrors
+if desired.
+
+The base+ container stacks on the base container. It modifies
+all of the base OS repositories to point to the static local mirrors
+instead of the internet based ones. Then it adds dependencies for
+building code, pulling down source code via git, handling tar and
+compressed files, as well as an editor for viewing and modifying
+files. Finally, it captures some of the build host systems attributes
+and stores them in the metadata of the container as illustrated in the
+recipe file in Figure 3 and stacks on the base container in Figure 2.
+
+The base++ container adds the HPC system interconnect dri-
+Figure 1: Hybrid container layering strategy where the oper- vers and software stacks. Drivers and software stacks for multiple
+ating system, compilers, interconnect drivers and software interconnect technologies can be added to this layer to provide
+stack, MPI, and application are added in different container portability. For instance, both OmniPath and InfiniBand drivers can
+layers. When a layer needs to be modified, only that layer be added to this layer. An example recipe file adding both InfiniBand
+and layers stacked on it need to be rebuilt; lower layers can and OmniPath in a layer is shown in Figure 4.
+be reused.
+
+119
+
+
+
+PEARC ’23, July 23–27, 2023, Portland, OR, USA Sgambati, et al.
+
+Figure 2: Singularity recipe file for the base layer container. This base container only has the operating system.
+
+Figure 3: Singularity recipe file for the base+ layer container. This base container adds dependencies for building code like
+compilers, modifying files, etc.
+
+Finally, the MPI+base++ layer adds MPI to the container and en- To enhance portability of this layer, the UCX framework and two
+ables building the application layers, which require MPI. Additional “base" MPIs were added to support a wider range of host system
+frameworks or software can be added to this layer that enhance the MPI libraries, MPICH and OpenMPI. MPICH is ABI compatible
+capabilities or functionality of MPI to support greater portability. with multiple MPI libraries, such as Intel MPI, MVAPICH2, and
+An example recipe file for this layer is shown in Figures 5-7. MPICH, and OpenMPI is ABI compatible with itself. This makes
+
+it so that when the application layers are built, they can build two
+
+120
+
+
+
+SoftwareQuality Assurance for High Performance Computing Containers PEARC ’23, July 23–27, 2023, Portland, OR, USA
+
+Figure 4: Singularity recipe file for the base++ layer container. This container adds the drivers and software stacks for two HPC
+interconnect technologies, InfiniBand and OmniPath.
+
+versions of the application, one against MPICH and one against Another feature of this strategy is that application layers can
+OpenMPI, allowing for much greater portability with host systems choose which layer to build against. For example, if an application
+and decreasing the likelihood of needing to make changes to host does not need MPI, it can be built against the base++ layer or if it
+systems. does not need MPI or the interconnect, then it can build against
+
+the base+ layer. This helps keep the size of the containers down,
+
+121
+
+
+
+PEARC ’23, July 23–27, 2023, Portland, OR, USA Sgambati, et al.
+
+Figure 5: Singularity recipe file for theMPI+base++ layer container showing theMPI “hello world" test code and UCX installation
+steps.
+
+122
+
+
+
+SoftwareQuality Assurance for High Performance Computing Containers PEARC ’23, July 23–27, 2023, Portland, OR, USA
+
+Figure 6: Singularity recipe file for the MPI+base++ layer container showing the MPICH and OpenMPI installation steps as well
+as compiling the “hello world" test code for each MPI.
+
+simplifies the verification and validation steps, and stills maintains was used just for testing portability but not performance. One con-
+the reproducibility and portability offered by this strategy. tainer was built for each of the test applications (OSU microbench-
+
+mark, LULESH, and MCNP). This one container was run on all
+4 PERFORMANCE MEASUREMENTS AND the HPC systems and performance was compared against the na-
+
+RESULTS tively compiled and optimized application version. As noted in the
+Section 3, because MVAPICH2 and OpenMPI are not ABI compat-
+
+The results in this section originate from runs executed on three ible, the container contained application builds of both MPICH
+different types of HPC systems: an Intel Cascade Lake based sys- (ABI compatible with MVAPICH2) and OpenMPI for performance
+tem with InfiniBand EDR interconnect (Sawtooth), an Intel Skylake comparison.
+based system with OmniPath interconnect (Lemhi), and an AMD Performance comparisons for the container version of LULESH
+EPYC based system with InfiniBand HDR interconnect (Hoodoo). are shown in Figure 8. In these performancemeasurements, LULESH
+These systems are summarized in Table 1. One additional system
+
+123
+
+
+
+PEARC ’23, July 23–27, 2023, Portland, OR, USA Sgambati, et al.
+
+Figure 7: Singularity recipe file for the MPI+base++ layer container showing the test, labels, and help sections.
+
+System Name Core Count Chipset Interconnect / Version OS
+Sawtooth1,2 99,792 Intel Xeon 8268 InfiniBand EDR / 4.9-4.1.7 CentOS Linux release 7.9.2009 (Core)
+Lemhi1,2 20,160 Intel Xeon 6148 OmniPath / 10.11.0.2-1 Rocky Linux release 8.7 (Green Obsidian)
+Hoodoo1,2 352 AMD EPYC 7302 InfiniBand HDR / 5.5-1.0.3 Rocky Linux release 8.5 (Green Obsidian)
+Galena1 40 Intel Xeon E5-2698 InfiniBand EDR / 5.4-3.5.8 Ubuntu 20.04.5 LTS (Focal Fossa)
+
+Table 1: Systems used for container portability1 and performance testing2. The same container was used on all systems to
+test portability. Performance of the container was compared against the natively compiled and optimized application on each
+system.
+
+was run for 1000 iterations with 303 points per domain. The same varying between 3% to 14% at the largest core counts. At some
+container was used to run on each system. To facilitate performance specific core counts, the container consistently outperformed the
+measurements between different MPI installations, the container natively compiled version. But in general, there was a relatively
+has two LULESH executables: one built against OpenMPI 4.1.4 and small performance penalty as part of the container strategy to
+one built against MPICH 3.4.3. This enables performance measure- ensure conditions for software quality assurance.
+ment for the container with different host MPI installations. At Performance comparisons between the container and native
+each core count, the simulation was run five times and the average compiled version of the OSU All-to-Allv microbenchmark across
+run time is reported. the three supercomputer systems are shown in Figure 9. All tests
+
+At most core counts, the container version of LULESH ran slower were run on 10 nodes of the system. Interesting, the container
+than the natively compiled and optimized version by an amount average latency was occasionally a little lower for some message
+
+124
+
+
+
+SoftwareQuality Assurance for High Performance Computing Containers PEARC ’23, July 23–27, 2023, Portland, OR, USA
+
+(a) Sawtooth with OpenMPI 4.1.4 as the host MPI (b) Sawtooth with MVAPICH2 2.3.5 as the host MPI
+
+(c) Lemhi with OpenMPI 4.1.1 as the host MPI (d) Hoodoo with OpenMPI 4.0.5 as the host MPI
+
+Figure 8: LULESH performance comparison between the container and natively compiled versions. In this plot, lower is better.
+The same container was used in each of these comparisons on three different supercomputers featuring different interconnect
+technologies, operating systems, and chipsets. The container has the LULESH executable compiled with OpenMPI 4.1.4 and
+another compiled with MPICH 3.4.3; the LULESH executable run was the version that is ABI compatible with the host MPI.
+The host MPI used to run the container was varied to observe any potential performance impact. The performance difference
+between container and natively compiled version at the highest core count on each system varied from 3% to 14%.
+
+sizes than the natively compiled version. This was especially true native build by over 20% at larger core counts which suggests that
+in the case where the host was MVAPICH2 2.3.5 and the container the production natively compiled MCNP application may need fur-
+used MPICH 3.4.3. For this microbenchmark, there were essentially ther optimization. On Lemhi, the MCNP container is generally 5%
+no negative performance consequences to running the container slower or less than the natively compiled application. In these per-
+built using the described software quality assurance strategy. formance tests, the host was OpenMPI and the exact same MCNP
+
+Performance comparisons between container and native com- executable was used in the container for both systems.
+piled version of anMCNP benchmark across the two supercomputer
+systems are shown in Figure 10. In this full application, the percent- 5 CONCLUSIONS
+age difference in container performance from the natively compiled This work presented an unique approach to handling traceability,
+version of MCNP is shown: positive percentage differences indicate portability, and reproducibility as part of software quality assur-
+the container ran slower than the native build while negative per- ance for containers across different host systems with different
+centage differences indicate the container ran faster than the native chipsets, interconnects, and OSes utilizing a layering approach.
+build. On Sawtooth, the container consistently outperformed the An empirical measurement of the performance costs associated
+
+125
+
+
+
+PEARC ’23, July 23–27, 2023, Portland, OR, USA Sgambati, et al.
+
+(a) Sawtooth with OpenMPI 4.1.4 as the host MPI (b) Sawtooth with MVAPICH2 2.3.5 as the host MPI
+
+(c) Lemhi with OpenMPI 4.1.1 as the host MPI (d) Hoodoo with OpenMPI 4.0.5 as the host MPI
+
+Figure 9: OSU All-to-Allv MPI microbenchmark performance comparison between the container and natively compiled versions.
+In this plot, lower is better. The same container was used in each of these comparisons on three different supercomputers
+featuring different interconnect technologies, operating systems, and chipsets and run on 10 nodes. The container has the
+OSU MPI All-to-Allv benchmark compiled with OpenMPI 4.1.4 and also compiled with MPICH 3.4.3. There were no negative
+performance consequences by using the container for this microbenchmark.
+
+with this software quality assurance strategy has been presented the performance metrics collected in this work used largely un-
+for three different applications across three different supercomput- optimized versions of the software in the containers, future work
+ers. The upper bound for the performance cost for this strategy includes exploring how much optimization could be performed on
+was 14% but this was not uniform across the applications and core the containerized software without affecting portability. It might be
+counts. In several instances, the software quality assurance con- possible to reduce some of the performance gasps reported here via
+tainer consistently outperformed the natively compiled application. specific optimizations. Even though there was generally a small per-
+The software quality assurance container was also tested for porta- formance loss in order to achieve portability, this work has shown
+bility on one additional DGX-1 system with Ubuntu 20.04. While that this strategy for containers can provide a reproducible, trace-
+the strategy was validated for Singularity and/or Apptainer in this able, and portable container with minimal to no changes required
+work, the strategy is not limited to just these container platforms. on host systems.
+
+Future work will explore the software quality assurance strategy
+for additional widely used HPC applications including the Vienna ACKNOWLEDGMENTS
+Ab Initio Simulation package and GROMACS+CP2K [3]. Because This research made use of the resources of the High Performance
+
+Computing Center at IdahoNational Laboratory, which is supported
+
+126
+
+
+
+SoftwareQuality Assurance for High Performance Computing Containers PEARC ’23, July 23–27, 2023, Portland, OR, USA
+
+(a) Sawtooth with OpenMPI 4.1.4 as the host MPI
+
+(b) Lemhi with OpenMPI 4.1.1 as the host MPI
+
+Figure 10: MCNP benchmark comparison between the container and natively compiled versions. The same container was used
+on both systems. On Lemhi, the natively compiled MCNP performance is generally comparable to the container performance
+while on Sawtooth the container performance was significantly better than the natively compiled version.
+
+127
+
+
+
+PEARC ’23, July 23–27, 2023, Portland, OR, USA Sgambati, et al.
+
+by the Office of Nuclear Energy of the U.S. Department of Energy standard. Parallel Comput. 22, 6 (1996), 789–828. https://doi.org/10.1016/0167-
+and the Nuclear Science User Facilities under Contract No. DE- 8191(96)00024-5
+
+[6] Harbor. 2023. Harbor Open Source Registry. https://goharbor.io/
+AC07-05ID14517. This manuscript has been authored by Battelle [7] Ian Karlin, Jeff Keasler, and Rob Neely. 2013. LULESH 2.0 Updates and Changes.
+Energy Alliance, LLC under Contract No. DE-AC07-05ID14517 with Technical Report LLNL-TR-641973. 1–9 pages.
+the U.S. Department of Energy. The United States Government [8] Idaho National Laboratory. 2023. MOOSE Framework. https://mooseframework.
+
+inl.gov/
+retains and the publisher, by accepting the article for publication, [9] NIST. 2019. CVE-2019-5736. https://nvd.nist.gov/vuln/detail/CVE-2019-5736
+acknowledges that the U.S. Government retains a nonexclusive, [10] NVIDIA. 2023. NAMD HPC Container. https://catalog.ngc.nvidia.com/orgs/
+paid-up, irrevocable, world-wide license to publish or reproduce hpc/containers/namd
+
+[11] NVIDIA. 2023. NVIDIA Containers. https://catalog.ngc.nvidia.com/containers
+the published form of this manuscript, or allow others to do so, for [12] Singularity. 2023. Singularity and MPI Applications. https://docs.sylabs.io/
+U.S. Government purposes. guides/3.5/user-guide/mpi.html
+
+[13] Sylabs. 2023. Sylabs Cloud. https://cloud.sylabs.io/library
+[14] Alfred Torrez, Timothy Randles, and Reid Priedhorsky. 2019. HPC Container
+
+REFERENCES Runtimes have Minimal or No Performance Impact. In 2019 IEEE/ACM Inter-
+[1] Richard S. Canon and Andrew Younge. 2019. A Case for Portability and Re- national Workshop on Containers and New Orchestration Paradigms for Isolated
+
+producibility of HPC Containers. In 2019 IEEE/ACM International Workshop Environments in HPC (CANOPIE-HPC). 37–42. https://doi.org/10.1109/CANOPIE-
+on Containers and New Orchestration Paradigms for Isolated Environments in HPC49598.2019.00010
+HPC (CANOPIE-HPC). 49–54. https://doi.org/10.1109/CANOPIE-HPC49598.2019. [15] Ohio State University. [n. d.]. OSU Microbenchmarks. https://mvapich.cse.ohio-
+00012 state.edu/benchmarks/
+
+[2] Docker. 2023. Docker Hub. https://hub.docker.com/ [16] Yinzhi Wang, R. Todd Evans, and Lei Huang. 2019. Performant Container Support
+[3] GROMACS. [n. d.]. Hybrid Quantum-Classical simulations (QM/MM) with CP2K for HPC Applications. In Proceedings of the Practice and Experience in Advanced
+
+interface. https://manual.gromacs.org/documentation/2022-beta1/reference- Research Computing on Rise of the Machines (Learning) (Chicago, IL, USA) (PEARC
+manual/special/qmmm.html ’19). Association for Computing Machinery, New York, NY, USA, Article 48,
+
+[4] GROMACS. 2022. GROMACS Container. https://hub.docker.com/r/gromacs/ 6 pages. https://doi.org/10.1145/3332186.3332226
+gromacs [17] Christopher Werner. [n. d.]. MCNP User’s Manual. https://mcnp.lanl.gov/pdf_
+
+[5] William Gropp, Ewing Lusk, Nathan Doss, and Anthony Skjellum. 1996. A high- files/TechReport_2017_LANL_LA-UR-17-29981_WernerArmstrongEtAl.pdf
+performance, portable implementation of the MPI message passing interface
+
+128

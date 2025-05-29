@@ -1,0 +1,509 @@
+﻿Measurement: Sensors xxx (xxxx) xxx 
+
+Contents lists available at ScienceDirect
+
+Measurement: Sensors
+journal homepage: www.sciencedirect.com/journal/measurement-sensors
+
+Consideration of software quality and reusability in the generation of digital 
+calibration certificates
+A R T I C L E  I N F O A B S T R A C T
+
+Keywords: For the provider of a calibration service, updating that service to generate and deliver machine-readable cali
+Digital calibration certificate bration certificates, referred to as “digital calibration certificates”, or “DCCs”, provides several challenges. For 
+DCC example, DCC generation is partly or wholly reliant on software and therefore it is vital that an appropriate 
+Software software quality framework is in place. For a provider of calibration services across multiple metrology domains, 
+Quality
+Reusability updating those services presents not only challenges but opportunities that can, and should, be taken. For 
+
+example, the structured nature of a DCC means that software to generate DCCs in different metrology domains is 
+frequently required to undertake the same or similar tasks. It is therefore desirable for software to be developed 
+to have sufficiently generic functionality that facilitates its reuse. This paper considers both quality and reus
+ability in the context of DCC generation.
+
+1. Introduction DCCs offer a number of advantages over traditional calibration cer
+tificates. For example, while the amount of information that can be 
+
+Significant effort has been and continues to be invested in the provided in a traditional certificate is to some extent constrained by a 
+development and implementation of machine-readable calibration cer desire to keep the number of pages relatively small, DCCs are not subject 
+tificates, often referred to as “digital calibration certificates” or, simply, to the same restriction. The main advantage of DCCs is that they can be 
+“DCCs”. easily read by computer, removing completely the need for human 
+
+The European Metrology Programme for Innovation and Research transcription of information, a potentially error-prone process associ
+(EMPIR) Joint Research Project (JRP) “Communication and validation ated with the use of traditional calibration certificates.
+of smart data in IoT-networks”, short name “SmartCom”, which ran from It is expected that DCC generation will be implemented, completely 
+2018 to 2021 [1], proposed a structure for DCCs. JRP partners first or almost completely, by software. Indeed, a DCC must include a section 
+developed a framework for the storage of measurement data that relies that provides, for traceability purposes, information about the software 
+on the International System of Units (SI) [2], referred to as the “Digital used to generate the DCC. There is therefore a clear need to ensure that 
+SI” or “D-SI” [3]. A framework for DCCs [4], which relies upon the D-SI, development of DCC generation software is undertaken with rigour to 
+was then developed. ensure that it is of suitable quality. The application of appropriate 
+
+Since the conclusion of the JRP, both frameworks have been updated software quality management processes provides confidence that this 
+at the Physikalisch-Technische Bundesanstalt (PTB) in Germany, with need is addressed.
+new versions, backwards compatible to previous versions, being made For organisations such as the National Physical Laboratory (NPL) 
+freely available [5]. that deliver a large number of calibration services across multiple 
+
+Currently, calibration information is largely disseminated in cali metrology domains [10], the development of DCC generation software 
+bration certificates that are provided in paper or electronic, e.g., and its integration into existing calibration services represent significant 
+Portable Document Format (PDF), form. (These forms are referred to in challenges. Advantage can and should be taken of the fact that the same 
+this paper as “traditional” calibration certificates.) However, in the next or very similar actions often need to be undertaken when generating 
+few years, it is anticipated that many calibration service providers will DCCs for different calibration services. The structure of a DCC naturally 
+modernise their calibration services to generate and deliver DCCs using lends itself to the adoption of a modular approach involving high-level, 
+the DCC framework. calibration service-specific functions that call low-level, calibration 
+
+In contrast to both types of traditional calibration certificate, a DCC service-independent functions. Software can be stored in a central re
+takes the form of a text file that has a structure defined by the DCC pository to facilitate its reuse.
+framework. It may be implemented using a data serialisation format This paper discusses the requirements for software for DCC genera
+such as Extensible Markup Language (XML) [6] or JavaScript Object tion, focusing on the twin aspects of quality and reusability. On quality, 
+Notation (JSON) [7] and can be viewed using a simple text editor such as partners in the European Metrology Network for Mathematics and Sta
+Notepad++ [8] or within an integrated development environment (IDE) tistics (Mathmet) have developed a draft version of quality assurance 
+such as Visual Studio [9]. tools for software and data [11]. Consideration is given to the 
+
+https://doi.org/10.1016/j.measen.2024.101476
+
+Please cite this article as: Indhu George et al., Measurement: Sensors, https://doi.org/10.1016/j.measen.2024.101476 
+
+
+
+I. George et al.                                                                                                                                                                                                          M   e a  s u  r e  m  e  n  t :  S  e n sors xxx (xxxx) xxx 
+
+application of the concepts underpinning those tools. On reusability, the described in section 2.1 (In Fig. 2, the optional element dcc:refTy
+implementation of a modular approach to DCC generation software is peDefinitions allows references to objects to be provided.). Prefixes in 
+discussed. the names of the elements indicate the parent framework to which the 
+
+The paper is organised as follows. Section 2 provides an overview of element belongs – dcc for DCC, ds for XML signature and si for D-SI, 
+the structure and implementation of DCCs. Section 3 discusses the role of although the latter prefix is absent in the names of elements in Figs. 1 
+software in DCC generation, focusing on the twin aspects of quality and and 2 as D-SI elements are only encountered at lower levels in the XML 
+reusability, and example implementations of DCC generation software hierarchy than are shown.
+are described. Conclusions are presented in section 4.
+
+3. Software for DCC generation
+2. Digital calibration certificates
+
+While it is possible to generate a DCC manually, such an approach is 
+2.1. DCC structure prone to error and, particularly in the case of DCCs that contain a lot of 
+
+information, time-consuming. It is therefore desirable to develop soft
+A DCC is organised into a number of compulsory and optional sec ware for DCC generation. Many calibration services are already largely 
+
+tions as follows: automated and rely on software, for example, to acquire and process 
+data and subsequently output information to a spreadsheet that is then 
+
+• Administrative data – this compulsory section contains information transcribed manually. It is possible for DCC generation to be appended 
+that is typically found on the front page of a traditional calibration to or integrated into existing software. The issues of quality and reus
+certificate. ability in relation to DCC generation software are discussed in sections 
+
+• Measurement results – this compulsory section contains informa 3.1 and 3.2, respectively.
+tion relating to the calibration undertaken. This information includes 
+both the results of the calibration and additional details such as the 
+calibration method, the equipment and software used, and the in 3.1. Software quality
+fluence conditions.
+
+• Comment – this optional section contains information, additional to The quality assurance tools (currently draft version 6) for software 
+that in the measurement results section, that is specifically intended published by Mathmet [11] include an online interactive tool for the 
+for humans rather than computers, including graphical, video and generation of a software quality assurance plan.
+audio information. An initial step when using the tool is the assignment of a Software 
+
+• Document – this optional section contains a human-readable form of Integrity Level (SWIL) that provides a quantitative assessment of the risk 
+(all or part of) the DCC. associated with the software. The SWIL is an integer having value be
+
+• Signature – this optional section allows one or more signature to be tween 1 and 4 inclusive, where the value of 1 indicates the lowest level 
+provided. of risk and the number 4 the highest. The recommended SWIL is ob
+
+tained by combining two integers, also taking values between 1 and 4 
+Each section is itself organised into a number of compulsory and inclusive, that capture: 
+
+optional subsections. For example, the administrative data section 
+comprises the following subsections: • The criticality of usage (CU) of the software. The values 1, 2, 3 and 4 
+
+correspond to CUs classified as not critical, significant, substantial 
+• DCC software – generation of a DCC will involve one or more piece and life critical, respectively.
+
+of software (as the process should be as automated as possible). This • The complexity (CP) of the software. The values 1, 2, 3 and 4 
+compulsory subsection facilitates the recording of information about correspond to CPs classified as very simple, simple, moderate and 
+that software, important for traceability purposes. complex, respectively.
+
+• Core data – this compulsory subsection contains information 
+relating to the calibration. The recommended SWIL may be amended (increased or decreased) 
+
+• Items – this compulsory subsection contains information that allows to obtain a reviewed SWIL by accounting for moderating factors. For 
+identification of the calibration item or items. example, the availability of an alternative means of verifying the soft
+
+• Calibration laboratory – this compulsory subsection contains in ware could justify decreasing the recommended SWIL, while difficulty in 
+formation about the calibration laboratory. testing the software could justify increasing the recommended SWIL.
+
+• Responsible persons – this compulsory subsection contains infor The reviewed SWIL determines a list of quality requirements for the 
+mation about the person or persons responsible for releasing the development of the software relating to the following aspects: 
+DCC.
+
+• Customer – this compulsory subsection contains information about • User requirements.
+the customer for whom the calibration is being undertaken. • Functional requirements.
+
+• Statements – this optional subsection contains one or more state • Software design.
+ments that apply to the whole calibration process. • Software coding.
+
+• Verification.
+Each subsection then has its own subsubsections, etc.
+
+2.2. DCC implementation
+
+For each version of the DCC framework, an XML implementation has 
+been developed and made available. The implementation takes the form 
+of XML Schema Definition (XSD) files for the DCC framework and the 
+frameworks on which it relies. For version 3.2.1 of the DCC framework, 
+schema files are provided for the DCC, the D-SI and XML signature.
+
+Figs. 1 and 2 provide schematic views of the XML implementation of Fig. 1. Schematic view of XML DCC. In this and other figures, dashed lines 
+the DCC framework and its administrative data section, respectively, as indicate optional elements.
+
+e2 
+
+
+
+I. George et al.                                                                                                                                                                                                          M   e a  s u  r e  m  e  n  t :  S  e n sors xxx (xxxx) xxx 
+
+of the approach are provided in Ref. [12] and summarised below.
+
+3.2.1. DCC properties
+The XML implementation of a DCC has a number of properties that 
+
+directly impact the development of software for DCC generation. For 
+example: 
+
+• There may be multiple instances of the same child element within an 
+element. Examples include the child elements dcc:software and 
+dcc:item which may occur more than once within elements dcc: 
+dccSoftware and dcc:items, respectively.
+
+• There may be multiple instances of the same child element within 
+different elements. An example is the child element dcc:name 
+which may occur within elements dcc:software and dcc:item 
+
+Fig. 2. Schematic view of administrative data section of XML DCC. (as well as several other elements). The reuse of elements means that 
+there is no need to define multiple elements that have exactly the 
+
+• Validation. same structure and differ only in their names (for example, as dcc: 
+• Delivery, use and maintenance. softwareName, dcc:itemName, etc.)
+
+Depending on the SWIL, a particular activity may be mandatory, 3.2.2. Approach to DCC generation
+recommended or not required. For software assigned SWIL 3 or 4, re A template-based approach is considered that involves the following 
+view by a suitably qualified independent person is either recommended high-level steps (with steps 3 to 6 to be implemented in software and 
+or mandatory. Reviewing is a key activity, ensuring that the outputs for described in generic terms): 
+each of the above aspects are well-written, clear and unambiguous and 
+that ultimately the software executes its intended, potentially compli 1. Create a template XML DCC, i.e., an XML DCC that contains minimal 
+cated, aim. information, in the form of dummy textual element contents, but that 
+
+The guidance that accompanies the tool refers explicitly to mea is still valid according to the DCC, D-SI and XML signature schemas. 
+surement services and calibration certificates in three places: For version 3.2.1 of the DCC framework, the minimum number of 
+
+textual element contents is 24.
+• Software that “Generates results for a measurement service, for 2. Store all information required to populate the DCC in two Microsoft 
+
+example, numbers that will be displayed on a calibration certificate.” Excel workbooks, one for administrative data, the other for mea
+is provided as an example of software having SWIL 3. surement results. The administrative data workbook contains a 
+
+• Referring to documented functional requirements, “For software that worksheet for each of the child elements of the element dcc: 
+will form part of a calibration system also consider: administrativeData shown in Fig. 2. The number of worksheets 
+
+oCalculations for the calibration of a measuring instrument in the measurement results workbook depends on the amount of 
+oDetermination of uncertainties information required to be stored.
+oEasy upload of measurement and calibration data 3. Load the template XML DCC.
+oRecording of calculation results 4. For each worksheet in the administrative data workbook and for the 
+oAnalysis of trends on historical data (measuring instruments, measurement results workbook: 
+standards and calibrations items) a) Read in information.
+oNotifications of acceptance criteria and measurement b) Update the relevant element of the template DCC.
+requirements 5. Save the updated XML file.
+oPublication of calibration certificates” 6. Check that the generated DCC is valid according to the XML schemas 
+
+• Referring to traceability of the output, “Enter details of how the for the DCC, D-SI and DCC signature.
+outputs generated by the software, for example results to be pre
+sented in customer certificates or research papers, can be traced to 3.2.3. Python software
+the name and version of the software that generated them. Other Given its widespread use nowadays, it was decided to use the Python 
+information, such as date and time of execution, identifier of oper programming language [13]. Steps 3 to 5 of the template-based 
+ator/user and location of raw data may also be necessary.” For DCCs, approach can be elaborated: 
+this consideration is naturally treated by the compulsory DCC soft
+ware subsection of the administrative data section. 3. Encode the template XML DCC to a Python dictionary.
+
+More generic guidance includes: 4. For each worksheet in the administrative data workbook and for the 
+• Referring to functional requirements, “Functional requirements measurement results workbook: 
+
+should be labelled in a way that allows them to be traceable from the a) Read in information.
+user requirements to the code and tests that help verify the code.” b) Generate the dictionary value for the relevant dictionary key and 
+
+• Referring to validation against user requirements, “Enter a link [in replace the dictionary value for the template XML DCC by this 
+document on validation] to evidence that the user requirements have generated value.
+been met.” 5. Decode the entire updated dictionary to XML and save to file.
+
+In step 4a), the library openpyxl is used to read information from 
+3.2. Software reusability the workbooks. In steps 3 and 5, the library xmlschema is used to 
+
+encode/decode XML information to/from nested dictionaries using the 
+Specific details relating to software reusability will vary depending library. Fig. 3 shows how relatively simple XML elements map to Python 
+
+on the nature of the approach implemented by DCC generation software. dictionaries. A Python dictionary allows information to be stored as two 
+This paper presents a particular approach that aims to take advantage of components – a key and a value. For an XML element, the key is the 
+some of the properties of the XML DCC implementation. Further details name of the element, enclosed in single or double quotation marks, and 
+
+e3 
+
+
+
+I. George et al.                                                                                                                                                                                                          M   e a  s u  r e  m  e  n  t :  S  e n sors xxx (xxxx) xxx 
+
+Fig. 3. Mappings of simple XML elements to Python dictionaries: (top) an Fig. 5. Element dcc:coreData in template XML DCC.
+element that may occur only once, (middle) an element that may occur more 
+than once, (bottom) a parent element that may occur only once with a child 
+element that may occur more than once.
+
+the value is the content of the element, also enclosed in single or double 
+quotation marks. The concepts apply equally to XML elements having 
+more complicated structures. In step 6, the library xmlschema is also 
+used to check the validity of an XML file against the DCC, D-SI and XML 
+signature schemas.
+
+3.2.4. Example 1: core data
+Consider the core data subsection of the administrative section of the Fig. 6. Core data information as stored in administrative data workbook.
+
+XML implementation of the DCC framework. Fig. 4 provides a schematic 
+view of this subsection.
+
+Fig. 5 shows the contents of the core data element of the template 
+XML DCC. Note that the begin and end performance date elements 
+contain values that on one hand are valid, being of the form YYYY-MM- 
+DD, but on the other hand are nonsensical. The performance location is 
+one of the four permitted options.
+
+Fig. 6 shows the core data information stored in the corresponding 
+worksheet of the administrative data workbook. For the (synthetic) 
+calibration considered for this paper, as in the template XML DCC, only 
+the compulsory elements of the DCC are to be populated. (It could be Fig. 7. Python function to generate dictionary value for element 
+argued that, for a DCC generated at NPL, the first three pieces of in dcc:coreData.
+formation will always be the same as those provided in the template 
+XML DCC and thus they do not need to be explicitly specified in the core 
+data worksheet.)
+
+Fig. 7 shows the Python function used to generate the dictionary 
+value for the element dcc:coreData (to ease readability, header in
+formation and comments have been removed). The function assumes 
+that core data information appears in column C, starting at row 2, in the 
+worksheet. Calling this function creates the dictionary value shown in 
+Fig. 8. When the entire updated dictionary is decoded to XML, the 
+element dcc:coreData is as shown in Fig. 9. Fig. 8. Generated dictionary value for element dcc:coreData.
+
+From a reusability point of view, the Python function can easily be 
+incorporated into DCC generation software for other calibration services 
+
+Fig. 9. Element dcc:coreData in generated DCC.
+
+at NPL.
+Core data information represents some of the simplest type of in
+
+formation that is stored in a DCC, especially when none of the optional 
+child elements is included: 
+
+• The number of compulsory child elements is relatively small.
+• For a DCC generated by NPL, where English is the only language 
+
+used, the majority of compulsory child elements considered occur 
+only once.
+
+Fig. 4. Schematic view of core data subsection of administrative data section of 3.2.5. Example 2: DCC software
+XML DCC. In this and other figures, elements shaded grey may occur more 
+than once. Consider the DCC software subsection of the administrative section 
+
+e4 
+
+
+
+I. George et al.                                                                                                                                                                                                          M   e a  s u  r e  m  e  n  t :  S  e n sors xxx (xxxx) xxx 
+
+of a DCC. Fig. 10 provides a schematic view of this subsection. The single 
+child element dcc:software may occur any number of times. Fig. 11
+provides a schematic view of this child element. Fig. 12 provides a Fig. 10. Schematic view of DCC software subsection of administrative data 
+schematic view of the element dcc:name. section of XML DCC.
+
+Fig. 13 shows the contents of the DCC software element of the tem
+plate XML DCC.
+
+Fig. 14 shows the DCC software information stored in the DCC 
+software worksheet of the administrative data workbook. Information is 
+provided for four pieces of software. For each piece of software, the 
+elements to be populated relate to its name, release and description. The 
+software names are chosen for illustrative purposes only and may not 
+reflect names used in practice.
+
+Fig. 15 shows the Python function used to generate the dictionary 
+value for the element dcc:dccSoftware. The function assumes that 
+DCC software information appears in column C, starting at row 2. 
+Calling this function creates the dictionary value shown in Fig. 16. When Fig. 11. Schematic view of child element dcc:software of element dcc: 
+
+dccSoftware.
+the entire updated dictionary is decoded to XML, the element dcc: 
+dccSoftware is as shown in Fig. 17.
+
+The Python function to generate the dictionary value for the element 
+dcc:dccSoftware is slightly more complicated than that for the 
+element dcc:coreData, calling other (simple) functions gen Fig. 12. Schematic view of element dcc:name.
+erateNameDictionary and generateDescriptionDictionary 
+(shaded in Fig. 15).
+
+From a reusability point of view: 
+
+• The top-level function can easily be incorporated into DCC genera
+tion software for other calibration services at NPL.
+
+• The low-level functions can be reused multiple times, for example, to 
+allow the name of an item, a manufacturer, the customer, a mea
+surement result, a quantity, etc., to be assigned.
+
+Fig. 13. Element dcc:dccSoftware in template XML DCC.
+3.2.6. Other DCC sections
+
+The approach described for the DCC software subsection of the 
+administrative data of the DCC can be applied to other subsections of the 
+administrative data section and the measurement results section.
+
+In general, the measurement results section is expected to require the 
+development of software that is less reusable than software for other 
+subsections. However, there may be quantities or statements that need 
+to be provided in a similar way in different metrology domains. For 
+example: 
+
+• In domains such as mass and length metrology, it may be necessary 
+to provide information about the temperature in the laboratory when 
+the calibration was undertaken.
+
+• It is common for traditional calibration certificates to provide a 
+statement that describes how uncertainty evaluation is undertaken 
+and how uncertainty information is presented.
+
+For an organisation that provides calibration services, updating them 
+to generate and deliver DCCs gives the opportunity to ensure that in
+formation is presented in a consistent manner across all services.
+
+Fig. 14. DCC software information as stored in administrative data workbook.
+3.2.7. Notes
+
+1. Information presented in this paper relates to version 3.2.1 of the 
+DCC framework. While other versions of the framework are broadly 
+similar, specific details reported in the paper may not be applicable 
+to them. For example, the optional signature section is not present in 
+some earlier versions of the DCC framework.
+
+2. For simplicity, the use of XML attributes has not been considered in 
+this paper. While accounting for XML attributes may increase to 
+some degree the complexity of software development, the ability to 
+reuse software should not be reduced. Fig. 15. Python function to generate dictionary value for element dcc: 
+
+dccSoftware.
+
+e5 
+
+
+
+I. George et al.                                                                                                                                                                                                          M   e a  s u  r e  m  e  n  t :  S  e n sors xxx (xxxx) xxx 
+
+Software reusability is considered in the context of a specific 
+approach to DCC generation, based on updating the contents of an XML 
+DCC template, and implemented in software using the Python pro
+gramming language. The combination of the DCC structure and the 
+occurrence of the same type of element in (XML implementations of) 
+DCCs lend themselves naturally towards the development of software 
+that can be reused. For providers of multiple calibration services in 
+different metrology domains, the ability to develop a repository of 
+software that comprises low-level functions that can be called by high- 
+
+Fig. 16. Generated dictionary value for element dcc:dccSoftware. level, calibration service-specific functions provides a sensible and 
+efficient means to undertake software development.
+
+One of the challenges associated with DCC implementation across 
+multiple calibration services is the development of a large quantity of 
+software. However, focusing on the twin aspects of software quality and 
+reusability aims to minimise the effort required for this development and 
+the related time and cost. The initial effort required may be greater but 
+that “short term pain” should be counterbalanced by the “long term 
+gain” of less effort being required for later development. Adherence to 
+clearly-specified software quality plans ensures that suitable documen
+tation is put in place, making software maintenance more 
+straightforward.
+
+To date, at NPL, activity in the area of software development for DCC 
+generation has been relatively limited. It is anticipated that more 
+experience will be acquired and shared with colleagues from other Na
+tional Metrology Institutes.
+
+Some questions remain open. For example, to provide quality 
+assurance in traditional calibration certificates there is often a list of 
+manual checks on the certificate to be undertaken before it is signed and 
+delivered to the customer. To what extent can this manual checking be 
+reduced based on the software quality assurance that is put in place? 
+How should the checklist for traditional calibration certificates be 
+amended for DCCs?
+
+Although not considered in this paper, the quality of data is clearly 
+an important factor in calibration services. Complementing the quality 
+assurance tools for software, the Mathmet quality assurance tools 
+include tools for data. These tools could be used to facilitate the plan
+ning, control, improvement and assurance of the data used to populate 
+the measurement results section of a DCC, as well as the curation, ver
+sioning, and persistence of the output DCC itself once generated.
+
+Fig. 17. Element dcc:dccSoftware in generated DCC.
+Acknowledgments
+
+4. Conclusions The work presented here was supported by the UK Government’s 
+Department for Science, Innovation and Technology (DSIT) through the 
+
+Nowadays calibration information is largely disseminated using UK’s National Measurement System (NMS) programmes.
+paper or electronic, e.g., PDF, calibration certificates. However, it is 
+recognised that these “traditional” forms of calibration certificate have a 
+significant drawback – to use the information they contain requires References
+manual transcription, a process that is both time-consuming and prone 
+
+[1] SmartCom – Project [accessed 31 March 2024] https://www.ptb.de/empir2018/ 
+to error. To address this issue, a framework for what are termed “digital smartcom/project/.
+calibration certificates”, or “DCCs”, has been developed. The framework [2] BIPM, The International System of Units (SI), ninth ed., Bureau International des 
+allows a calibration certificate to be provided as a structured machine- Poids et Mesures, 2019.
+
+[3] D. Hutzschenreuter, F. Härtig, W. Heeren, T. Wiedenhöfer, S.G. Hackel, + another 
+readable text file. 19 authors. SmartCom. Digital System of Units (D-SI). Guide for the use of the 
+
+Providers of calibration services need to integrate DCC generation metadata-format used in metrology for the easy-to-use, safe, harmonised and un
+into their services. As it is impractical to generate DCCs manually, ambiguous digital transfer of metrological data, version 1.3, 2019. https://doi. 
+
+software must be developed for this purpose. In many cases, that soft org/10.5281/zenodo.3522631.
+[4] T. Wiedenhöfer, D. Hutzschenreuter, I. Smith, C. Brown. A universal and flexible 
+
+ware will be integrated into or appended to processes that are already structure for digital calibration certificates. DOI: https://doi.org/10.5281/zenodo. 
+largely reliant on software. This paper discusses two important aspects 3696567.
+relating to the development of software for DCC generation, namely [5] PTB DCC web area [accessed 31 March 2024] https://www.ptb.de/dcc/.
+
+[6] XML [accessed 31 March 2024] https://www.w3schools.com/xml/.
+quality and reusability. [7] JSON [accessed 31 March 2024] https://www.json.org/json-en.html.
+
+The Mathmet quality assurance tools, a draft version of which is [8] Notepad++ [accessed 31 March 2024] https://notepad-plus-plus.org/.
+freely available online, include an interactive tool that allows a software [9] Visual Studio [accessed 31 March 2024] https://code.visualstudio.com/.
+
+[10] Calibration – NPL [accessed 31 March 2024] https://www.npl.co.uk/calibration.
+quality assurance plan to be generated. The tool supports the quantita [11] EURAMET: Quality Assurance Tools [accessed 31 March 2024] https://www.eura 
+tive assessment of the risks associated with both the development and met.org/european-metrology-networks/mathmet/activities/quality-assurance 
+use of a piece of software and generates a corresponding list of actions to -tools.
+
+[12] I. M. Smith, R. I. Veltcheva, D. J. Griffin. Case Study on the Generation and Use of 
+be followed during the development of the software. Digital Calibration Certificates. NPL Report MS 56.
+
+e6 
+
+
+
+I. George et al.                                                                                                                                                                                                          M   e a  s u  r e  m  e  n  t :  S  e n sors xxx (xxxx) xxx 
+
+[13] Python [accessed 31 March 2024] https://www.python.org/. E-mail addresses: indhu.george@npl.co.uk (I. George), jean-laurent. 
+hippolyte@npl.co.uk (J.-L. Hippolyte), keith.lines@npl.co.uk (K. 
+
+Indhu George, Jean-Laurent Hippolyte, Keith Lines, Ian Smith* Lines), ian.smith@npl.co.uk (I. Smith). 
+National Physical Laboratory, Teddington, UK 
+
+* Corresponding author. 
+
+e7

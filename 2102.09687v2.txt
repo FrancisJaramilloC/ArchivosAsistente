@@ -1,0 +1,2091 @@
+﻿1
+
+SQAPlanner: Generating Data-Informed
+Software Quality Improvement Plans
+
+Dilini Rajapaksha, Chakkrit Tantithamthavorn, Jirayus Jiarpakdee,
+Christoph Bergmeir, John Grundy, and Wray Buntine
+
+Abstract— Software Quality Assurance (SQA) planning aims to define proactive plans, such as defining maximum file size, to prevent
+the occurrence of software defects in future releases. To aid this, defect prediction models have been proposed to generate insights as
+the most important factors that are associated with software quality. Such insights that are derived from traditional defect models are
+far from actionable—i.e., practitioners still do not know what they should do or avoid to decrease the risk of having defects, and what is
+the risk threshold for each metric. A lack of actionable guidance and risk threshold can lead to inefficient and ineffective SQA planning
+processes. In this paper, we investigate the practitioners’ perceptions of current SQA planning activities, current challenges of such
+SQA planning activities, and propose four types of guidance to support SQA planning. We then propose and evaluate our AI-Driven
+SQAPlanner approach, a novel approach for generating four types of guidance and their associated risk thresholds in the form of rule-
+based explanations for the predictions of defect prediction models. Finally, we develop and evaluate an information visualization for our
+SQAPlanner approach. Through the use of qualitative survey and empirical evaluation, our results lead us to conclude that SQAPlanner
+is needed, effective, stable, and practically applicable. We also find that 80% of our survey respondents perceived that our visualization
+is more actionable. Thus, our SQAPlanner paves a way for novel research in actionable software analytics—i.e., generating actionable
+guidance on what should practitioners do and not do to decrease the risk of having defects to support SQA planning.
+
+Index Terms—Software Quality Assurance, SQA Planning, Actionable Software Analytics, Explainable AI.
+
+F
+
+1 INTRODUCTION However, these current state-of-the-art defect predic-
+tion approaches can only indicate the most important
+
+Software Quality Assurance (SQA) planning is the pro- features, which are still far from actionable. Thus, prac-
+cess of developing proactive SQA plans. One of the titioners still do not know (1) what they should do to
+most important SQA activities is to define development decrease the risk of having defects, and what they should
+policies and their associated risk thresholds [12] (e.g., avoid to not increase the risk of having defects and (2)
+defining the maximum file size, the maximum code com- what is a risk threshold for each metric (e.g., how large
+plexity, and the minimum degree of code ownership). is a file size that would be risky? and how small is a file
+Such SQA plans will be later enforced for a whole team size that would be non-risky?).
+to ensure the highest quality of software systems. These A lack of actionable guidance and its risk threshold
+policies are essential to improve software quality and can lead to inefficient and ineffective SQA planning
+software maintainability [30]. processes. Such ineffective SQA planning processes will
+
+Recently, top software companies have released sev- result in the recurrence of software defects, slow project
+eral commercial AI-driven defect prediction tools. For progress, high costs of development, unsatisfactory soft-
+example, Microsoft’s Code Defect AI, Amazon’s Code- ware products, and unhappy end-users. These chal-
+Guru. Such tools heavily rely on the concept of defect lenges are very significant to the practical applications
+prediction models that have been well-studied in the of defect prediction models, but still remain largely
+past decades [17]. In particular, Microsoft’s Code Defect unexplored.
+AI is built on top of the concept of explainable Just-In- We aim to help practitioners to make better data-
+Time defect prediction [21, 46]—i.e., explaining the pre- informed SQA planning decisions by generating action-
+dictions of defect models using a LIME model-agnostic able guidance derived from defect prediction models.
+technique [39]. The crux of Microsoft’s Code Defect AI Thus, we first propose the following four types of guid-
+tool is similar to the recent parallel work by Jiarpakdee et ance to support SQA planning:
+al. [21] who also suggested to use a LIME model-agnostic (G1) Risky current practices that lead the defect model
+technique to explain the predictions of defect models. to predict a file as defective are needed to help
+
+practitioners understand what are the current risky
+• D. Rajapaksha, C. Tantithamthavorn, J. Jiarpakdee C. Bergmeir, J. Grundy, practices.
+
+and W. Buntine are with the Faculty of Information Technology, Monash
+University, Melbourne, Australia. (G2) Non-risky current practices that lead the defect
+E-mail: {dilini.rajapakshahewaranasinghage, chakkrit, jirayus.jiarpakdee, model to predict a file as clean are needed to
+christoph.bergmeir, john.grundy, wray.buntine}@monash.edu help practitioners understand what are the non-
+
+• Corresponding author: C. Tantithamthavorn. risky current practices.
+
+arXiv:2102.09687v2  [cs.SE]  27 Mar 2021
+
+
+
+2
+
+(G3) Potential practices to avoid to not increase the rule-based model-agnostic techniques (i.e., Anchor [40]
+risk of having defects are needed to help prac- (i.e., an extension of LIME [39]), LORE [15]). Through a
+titioners understand which currently not imple- case study of 32 releases across 9 open-source software
+mented practices to avoid to not increase the risk projects, we addressed the following research questions:
+of having defects. (RQ3) How effective are the rule-based explanations
+
+(G4) Potential practices to follow to decrease the risk generated by our SQAPlanner approach when
+of having defects are needed to help practitioners compared to the state-of-the-art approaches?
+understand which practices to newly implement to The rule-based guidance generated by our SQA-
+decrease the risk of having defects. Planner approach achieves the highest coverage
+
+To achieve this aim, our research study has the follow- (at the median 89%), confidence (at the median
+ing 3 key objectives: 99%), and lift scores (at the median 6.6) when
+(Obj1) Investigating practitioners’ perceptions and chal- comparing to baseline techniques.
+
+lenges of carrying out current SQA planning (RQ4) How stable are the rule-based explanations
+activities and the perceptions of our proposed generated by our SQAPlanner approach when
+four types of guidance; they are regenerated? Our SQAPlanner approach
+
+(Obj2) Developing and evaluating our novel SQAPlan- produces the most consistent (a median Jaccard
+ner approach and comparing it with state-of-the- coefficient of 0.92) rule-based guidance when
+art approaches; comparing to baseline techniques, suggesting that
+
+(Obj3) Developing and evaluating an information vi- our approach can generate the most stable rule-
+sualization for our SQAPlanner approach and based guidance when they are regenerated.
+comparing it with the visualization of Microsoft’s (RQ5) How applicable are the rule-based explana-
+Code Defect AI tool. tions generated by our SQAPlanner approach
+
+To achieve the first objective, we first conducted a to minimize the risk of having defects in the
+qualitative survey with practitioners to address the fol- subsequent releases? For 55%-87% of the defec-
+lowing research questions: tive files, our SQAPlanner approach can gener-
+(RQ1) How do practitioners perceive SQA planning ate rule-based guidance that is applicable to the
+
+activities? For SQA planning activities, 86% of subsequent release to decrease the risk of having
+the respondents perceived as important and defects.
+70% perceived as being used in practice. How- To evaluate the practical usefulness of our SQAPlan-
+ever, 66% perceived as time-consuming and 58% ner, we developed a proof-of-concept prototype to vi-
+perceived as difficult, indicating that a data- sualize the actual generated actionable guidance. The
+informed SQA planning tool is needed to sup- visualization of our SQAPlanner is designed to provide
+port QA teams for better data-informed decision- the following key information: (1) the list of guidance
+making and policy-making. that practitioners should follow and should avoid; (2) the
+
+(RQ2) How do practitioners perceive our proposed actual feature value of that file; and (3) its threshold and
+four types of guidance to support SQA plan- range values for practitioners to follow to mitigate the
+ning? Both (G1) the guidance on risky current risk of having defects. Then, we compare our visualiza-
+practices that lead a model to predict a file as tion with the visualization of Microsoft’s Code Defect AI
+defective and (G4) the guidance on the potential (see Figure 2). Finally, we conducted a qualitative survey
+practices to follow to decrease the risk of having to address the following research questions:
+defects are perceived as among the most useful, (RQ6) How do practitioners perceive the visualiza-
+most important, and most considered willingness tion of SQAPlanner when comparing to the
+to adopt by the respondents. visualization of the state-of-the-art? 80% of the
+
+Motivated by the findings of RQ1 and RQ2, we pro- respondents agree that the visualization of our
+posed an AI-Driven SQAPlanner—i.e., an approach to SQAPlanner is best to provide actionable guid-
+generate four types of guidance in the form of rule- ance compared to the visualization of Microsoft’s
+based explanations [36] to support data-informed SQA Code Defect AI.
+planning. Our AI-Driven SQAPlanner is a significant ad- (RQ7) How do practitioners perceive the actual guid-
+vancement over the LIME model-agnostic technique [39], ance generated by our SQAPlanner? 63%-90% of
+since LIME only indicates what factors are the most im- the respondents agree with the seven statements
+portant to support the predictions towards defective (G1) derived from the actual guidance generated by
+and clean (G2) classes, while our AI-Driven SQAPlanner our SQAPlanner.
+can additionally provide actionable guidance on what
+should developers avoid (G3) and should do (G4) to The key contributions of this paper are:
+decrease the risk of having defects. Then, we conduct • An empirical investigation of the practitioners’ per-
+an empirical evaluation to evaluate our SQAPlanner ceptions and their challenges of current SQA plan-
+approach and compare with two state-of-the-art local ning activities.
+
+
+
+3
+
+• An empirical investigation of the practitioners’ per-
+ceptions of our proposed four types of guidance.
+
+• The development of our novel AI-Driven SQAPlan-
+ner approach to generate the proposed four types of
+guidance in the form of rule-based explanations to
+better support SQA planning. The implementation
+is available at https://github.com/awsm-research/
+SQAPlanner-implementation.
+
+• The empirical investigation of the effectiveness, the
+stability, and the applicability of rule-based expla-
+nations generated by our SQAPlanner.
+
+• The development of the visualization of our SQA-
+Planner approach and the empirical investigation of
+the practitioners’ perceptions on our visualization
+and the actual guidance. Fig. 1: A JIRA software development process and how
+
+The rest of the paper is organized as follows. Sec- QA engineers interact with developers prior to releasing
+tion 2 discusses the significance of SQA planning, the a software product.
+limitations of current AI-driven defect prediction tools,
+and the motivation of the proposed four types of guid-
+ance to support SQA planning. Section 3 presents the Figure 1 provides an overview of a JIRA software de-
+overview of our case study and the motivation of the velopment process.1 During this process, a QA engineer
+research questions. Section 4 presents the results of the has multiple points at which he or she provides feedback
+practitioners’ perceptions of SQA planning activities and into the way the feature is developed and tested—i.e.,
+the four types of guidance to support SQA planning. providing every form of quality improvement guidance
+Section 5 presents our SQAPlanner approach, while Sec- for all steps of the software development process from
+tion 6 presents the empirical results of our SQAPlanner planning to completion. This process allows for imme-
+approach. Section 7 presents the empirical investigation diate active feedback to ensure that knowledge gained
+of the visualization of our SQAPlanner and the actual from previous software defects is fed back into the
+guidance generated by our SQAPlanner approach. Sec- testing notes for future releases to prevent defects in the
+tion 8 summarizes the threats to the validity of our study, next iteration.
+and Section 9 discusses related work. Finally, Section 10
+draws the conclusions. 2.2 AI-Driven Defect Prediction and Limitations
+
+An AI-driven defect prediction (aka. defect prediction
+2 B model) is a classification model which is trained on
+
+ACKGROUND AND MOTIVATION historical data in order to predict if a file is likely to be
+In this section, we first discuss the significance of Soft- defective in the future. Defect models serve two main
+ware Quality Assurance (SQA) planning. Then, we dis- purposes. First is to predict. The predictions of defect
+cuss the limitations of current AI-driven defect predic- models can help developers to prioritize their limited
+tion tools. Finally, we propose the four types of guidance SQA resources on the most risky files [9, 32, 48, 50].
+to support SQA planning. Therefore, developers can save their limited SQA effort
+
+on the most risky files instead of wasting their time
+on inspecting less risky files. Second is to explain. The
+
+2.1 “Prevention is better than cure” insights that are derived from defect models could help
+This is a classic principle that is commonly applied to managers chart quality improvement plans to avoid the
+SQA processes to prevent software defects [28]. It is pitfalls that lead to defects in the past [2, 31, 51]. For
+widely known that the cost of software defects rises example, if the insights suggest that code complexity
+significantly if they are discovered later in the process. shares the strongest relationship with defect-proneness,
+Thus, finding and fixing software defects prior to releas- managers must initiate quality improvement plans to
+ing software is usually much cheaper and faster than control and monitor the code complexity of that system.
+fixing after the software is released [3]. Therefore, SQA Recently, top software companies have released sev-
+teams play a critical role in software companies as a eral commercial AI-driven defect prediction tools. For
+gatekeeper, i.e., not allowing software defects to pass example, Microsoft’s Code Defect AI,2 Amazon’s Code-
+through to end-users. Guru.3 Such tools heavily rely on the concept of defect
+
+Consider an example of an SQA practice inside the prediction models that have been well-studied in the
+Atlassian company, Australia’s largest software com- 1. https://www.atlassian.com/blog/inside-atlassian/jira-qa-process
+pany with a variety of well-known software products 2. https://www.microsoft.com/en-us/ai/ai-lab-code-defect
+e.g., JIRA Issue Tracking System, BitBucket, and Trello. 3. https://aws.amazon.com/codeguru/
+
+
+
+4
+
+Fig. 2: An example visualization of the Microsoft’s Code Defect AI tool (http://codedefectai.azurewebsites.net/).
+However, this tool does not suggest what practitioners should do to decrease the risk of having defects, and what
+practitioners should avoid in order not to increase the risk of having defects. In addition, this tool does not suggest
+a risk threshold for each metric.
+
+past decades [17]. In particular, Microsoft’s Code Defect cates what factors are the most important to support
+AI is built on top of the concept of explainable Just-In- the predictions towards defective (G1) and clean
+Time defect prediction [21, 46]—i.e., explaining the pre- (G2) classes, without providing actionable guidance
+dictions of defect models using a LIME model-agnostic on what should they avoid (G3) and should do (G4)
+technique [39]. LIME is a model-agnostic technique for to decrease the risk of having defects.
+explaining the predictions of any AI/ML algorithms. • Second, practitioners still do not know a risk
+The crux of Microsoft’s Code Defect AI tool is similar threshold for each metric (e.g., how large is a file
+to the recent parallel work by Jiarpakdee et al. [21]— size that would be risky? and how small is a file
+i.e., extracting several software metrics (e.g., Churn), size that would be non-risky?).
+building a classification model (e.g., random forests), A lack of these types of guidance and its risk thresh-
+generating a prediction for each file in a commit, and old could lead to inefficient and ineffective SQA plan-
+generating an explanation of each prediction using the ning processes. Such ineffective SQA planning processes
+LIME model-agnostic technique [39]. could result in the recurrence of software defects, slow
+
+Figure 2 presents an example visualization of project progress, high costs of development, unsatisfac-
+Microsoft’s Code Defect AI product for the file tory software products, and unhappy end-users. To the
+ErrorHandlerBuilderRef.java of the Apache best of our knowledge, the aforementioned challenges
+Camel Release 2.9.0. This figure shows that this file are very significant to the practical applications of defect
+is predicted as defective with a confidence score of prediction models, but still remain largely unexplored.
+70%. There are three most important factors that are
+associated with this prediction as defective, i.e., the 2.3 A Motivating Scenario for our SQAPlanner
+number of lines of class and method declaration, the
+number of distinct developers, and the degree of code To address the aforementioned challenges, we propose
+ownership. Thus, these insights can help managers an AI-driven SQAPlanner—i.e., an approach for gener-
+chart quality improvement plans to control for these ating four types of guidance and its risk threshold in
+metrics. However, there exist the following limitations. the form of rule-based explanation for the predictions of
+
+defect models. Below, we discuss a motivating scenario
+• First, practitioners still do not know what they of how our AI-Driven SQAPlanner could be used in a
+
+should do to decrease the risk of having defects, software development process to assist SQA planning.
+and what they should avoid to not increase the risk Without our SQAPlanner. Consider Bob who is a QA
+of having defects. We find that LIME can only indi- manager joining a new software development project.
+
+
+
+5
+
+His main responsibility is to apply SQA activities (e.g., presented in a form of rule-based explanations are bene-
+code review and testing) to find defects and develop ficial to guide practitioners when developing SQA plans.
+quality improvement plans to prevent them in the next Below, we present the definition, the motivation, and an
+iteration. However, he has little knowledge of the soft- example of the four types of guidance.
+ware projects. Therefore, he decides to deploy a defect G1: Risky current practices that lead the defect model
+prediction model to guide his QA team about where is to predict a file as defective are needed to help
+the risky areas of source code so his team can effectively practitioners understand what current practices are
+allocate the limited effort on this risky area. However, problematic. For example, an association rule of
+Bob still encounters various SQA planning problems {LOC > 100} associate
+
+=====⇒ DEFECT indicates that a
+during the planning steps to prevent software defects in file with LOC greater than 100 is associated with
+the next iteration. In particular, without AI-driven SQA the predictions towards a defective class. Thus,
+planning tools, he can’t understand what are the risky practitioners should consider decreasing the LOC
+practices and what are the non-risky practices for this to less than 100, as this may likely decrease the risk
+team and this project, what are key actions to avoid that of having defects.
+increase the risk of having defects, and what are the key G2: Non-risky current practices that lead the defect
+actions to do to decrease the risk of having defects. A model to predict a file as clean are needed to
+lack of AI-driven SQA planning tools could lead to a failure help practitioners understand what current prac-
+to develop the most effective SQA plans. Ultimately, this tices contribute towards a low risk of having defects.
+results in the recurrence of software defects, slow project For example, an association rule of {Ownership >
+progress, and high costs of software development, unsat-
+
+0.8} associate
+isfactory software products, and unhappy end-users. =====⇒ CLEAN indicates that a file with an
+With our SQAPlanner. Now consider that Bob adopts ownership value greater than 0.8 is associated with
+our AI-driven SQAPlanner tool. In particular, given a the predictions towards a clean class. Thus, prac-
+file that is predicted as defective by defect prediction titioners should consider maintaining or increasing
+models, our SQAPlanner can further generate rule-based the ownership value to more than 0.8 to potentially
+explanations to better understand what are key risky decrease the risk of having defects.
+practices, non-risky practices, actions to avoid that in- G3: Potential practices to avoid to not increase the risk
+crease the risk of defects, and actions to do to decrease of having defects are needed to help practition-
+the risk of having defects for that file. Bob can use our ers understand which currently not implemented
+SQAPlanner to make data-informed decisions when devel- practices to avoid to not increase the risk of hav-
+oping SQA plans. This could result in more optimal SQA ing defects. For example, an association rule of
+plans, leading to higher quality of software systems, {MinorDeveloper > 0} associate
+
+=====⇒ DEFECT indicates
+less number of software defects, lower costs of software that a file with a number of minor developers of
+development, satisfactory software products, and happy greater than 0 is associated with the predictions
+end-users. towards a defective class. Thus, practitioners should
+
+avoid increasing the number of minor developers to
+greater than zero to not increase the risk of having
+
+2.4 The Design Rationale for the Four Types of Guid- defects.
+ance G4: Potential practices to follow to decrease the risk
+First, we propose to generate the guidance in the form of having defects are needed to help practitioners
+of rule-based explanations, since our recent work [21] understand which practices to newly implement to
+found that decision trees/rules are the most preferred decrease the risk of having defects. For example,
+representation of explanations by software practitioners an association rule of {RatioCommentToCode >
+as they involve logic reasoning that they are familiar 0.6} associate
+
+=====⇒ CLEAN indicates that a file with
+with. Formally, a rule-based explanation (e) is an as- a proportion of comments to code that is larger
+sociation rule e = {r = p ⇒ q} that describes the than 60% is associated with the predictions towards
+association between p (a Boolean condition of feature the clean class. Thus, practitioners should consider
+values (i.e., antecedent, left-hand-side, LHS)) and q (the increasing the proportion of comments to code to
+consequence (i.e., consequent, right-hand-side, RHS)) for greater than 60% to decrease the risk of having
+the decision value y = f ′(x). In this paper, we use an defects.
+arrow ( associate
+
+=====⇒) to describe the association between the
+Boolean condition (p) of feature values for a file and the
+predictions (q) towards a {DEFECT,CLEAN} class. Note 3 STUDY DESIGN AND RESEARCH QUES-
+that an association in general doesn’t mean that there is TIONS
+a causal relationship. In this paper, we aim to help practitioners make data-
+
+Second, motivated by the limitations of Microsoft’s informed SQA planning by providing guidance on (1)
+Code Defect AI tool (see Figure 2), we hypothesize what practitioners should do to decrease the risk of
+that the following four types of guidance (G) that are having defects and (2) what practitioners should avoid in
+
+
+
+6
+
+Driven SQAPlanner Approach. To address the practi-
+Aim: To help practitioners make data-informed SQA planning tioners’ challenges of SQA planning and the limitations
+
+of Microsoft’s Code Defect AI tool, we propose SQA-
+Obj1: Investigating the Obj2: Evaluating our Obj3: Evaluating the 
+
+Perceptions of SQA   SQAPlanner  Planner to help practitioners make data-informed deci-
+Visualization of our 
+
+Planning & our Guidance Approach SQAPlanner sions when developing SQA plans. First, SQAPlanner
+develops a defect prediction model to generate a predic-
+
+Qualitative Survey Empirical Evaluation Qualitative Survey tion. Then, SQAPlanner generates a rule-based explana-
+tion of the prediction to provide actionable guidance.
+
+RQ1, RQ2 RQ3, RQ4, RQ5 RQ6, RQ7 However, there are different local rule-based model-
+agnostic techniques for generating explanations in the
+
+Fig. 3: An overview of our study design and research eXplainable AI (XAI) domain available (e.g., Anchor [40]
+questions. and LORE [15]). Thus, it remains unclear whether our
+
+SQAPlanner outperforms the state-of-the-art rule-based
+model-agnostic techniques. Therefore, we conduct an
+
+order not to increase the risk of having defects with (3) a empirical study to evaluate our approach and compare
+risk threshold in the form of rule-based explanations for with the baseline techniques. Thus, we formulate the
+the predictions of defect prediction models. To achieve following research questions.
+this aim, we design our case study according to the
+following objectives (see Figure 3): • (RQ3) How effective are the rule-based expla-
+
+Objective 1—Investigating the practitioners’ percep- nations generated by our SQAPlanner approach
+tions of SQA planning and the proposed four types when compared to the state-of-the-art approaches?
+of guidance. SQA planning activities are important in • (RQ4) How stable are the rule-based explanations
+software development processes (e.g., to define initial generated by our SQAPlanner approach when they
+software development policies), but often vary from are regenerated?
+organization to organization [11]. However, there exist • (RQ5) How applicable are the rule-based expla-
+no empirical studies that investigate how practitioners nations generated by our SQAPlanner approach
+perceive the importance of SQA planning activities in to minimize the risk of having defects in the
+their organization and what are their key challenges. subsequent releases?
+Thus, we formulate the following research question:
+• (RQ1) How do practitioners perceive SQA plan- Objective 3—Developing the Visualization of SQA-
+
+ning activities? Planner and Investigating the Practitioners’ Percep-
+One of the most important SQA planning activities is tions. While the rule-based explanations of our SQA-
+
+to define development policies and their associated risk Planner are designed to help practitioners understand
+thresholds [12]. Such development policies will be later the logic behind the predictions of defect models, such
+enforced for the whole team to ensure the highest quality rule-based explanations may not be immediately ac-
+of software systems (e.g., the maximum file size, the tionable and easily understandable by practitioners.
+maximum code complexity, the minimum code to com- Thus, we develop a proof-of-concept by translating the
+ment ratio, and the minimum degree of code ownership). rule-based explanations of the actionable guidance into
+Such policies are essential to improve software quality human-understandable explanations. The visualization
+and software maintainability. Recently, Microsoft’s Code of our SQAPlanner is designed to provide the following
+Defect AI tool has been released to the public where the key information: (1) the list of guidance that practitioners
+crux of this tool is defect prediction models. However, should follow and should avoid; (2) the actual metric
+Figure 2 shows that such tool only indicates the im- values of that file; and (3) the risk threshold and range
+portance scores of features that are generated by LIME, values for practitioners to follow to mitigate the risk
+which are still far from actionable. That means LIME of having defects. Then, we conduct a post-validation
+only indicates what factors are the most important to qualitative survey with practitioners to evaluate their
+support the predictions towards defective (G1) and clean perceptions of the visualization of our SQAPlanner when
+(G2) classes, but do not actually guide developers what comparing to the existing visualization of Microsoft’s
+should they avoid (G3) and should do (G4) to decrease Code Defect AI (see Figure 2). Thus, we formulate the
+the risk of having defects. We hypothesize that our pro- following research questions:
+posed four types of guidance that are presented in a form
+of rule-based explanation would be more actionable to • (RQ6) How do practitioners perceive the visual-
+guide practitioners when developing SQA plans. Thus, ization of SQAPlanner when comparing to the
+we formulate the following research question: visualization of the state-of-the-art?
+• (RQ2) How do practitioners perceive our proposed • (RQ7) How do practitioners perceive the actual
+
+four types of guidance to support SQA planning? guidance generated by our SQAPlanner?
+Objective 2—Developing and Evaluating our AI-
+
+
+
+7
+
+TABLE 1: (RQ1 and RQ2) A summary of the agreement percentage, the disagreement percentage, and the agreement
+factor for the practitioners’ perception of SQA planning activities and our proposed four types of guidance.
+
+Dimension Statement %Agreement %Disagreement Agreement Factor
+(RQ1) Perceived importance 86% 6% 14.33
+(RQ1) Being used in practice 70% 10% 7.00
+
+SQA planning activities
+(RQ1) Perceived time-consuming 66% 10% 6.60
+
+(RQ1) Perceived difficulty 58% 24% 2.42
+G1: Risky current practices that lead
+
+82% 6% 13.67
+the defect model to predict a file as defective
+G2: Non-risky current practices that lead
+
+64% 10% 6.40
+the defect model to predict a file as clean
+
+(RQ2) Perceived usefulness G3: Potential practices to avoid to
+52% 20% 2.60
+
+not increase the risk of having defects
+G4: Potential practices to follow to decrease
+
+80% 8% 10.00
+the risk of having defects
+G1: Risky current practices that lead
+
+64% 10% 6.40
+the defect model to predict a file as defective
+G2: Non-risky current practices that lead
+
+60% 10% 6.00
+the defect model to predict a file as clean
+
+(RQ2) Perceived importance G3: Potential practices to avoid to
+64% 24% 2.67
+
+not increase the risk of having defects
+G4: Potential practices to follow to decrease
+
+82% 6% 13.67
+the risk of having defects
+G1: Risky current practices that lead
+
+74% 12% 6.17
+the defect model to predict a file as defective
+G2: Non-risky current practices that lead
+
+66% 12% 5.50
+the defect model to predict a file as clean
+
+(RQ2) Willingness to adopt G3: Potential practices to avoid to
+52% 22% 2.36
+
+not increase the risk of having defects
+G4: Potential practices to follow to decrease
+
+72% 12% 6.00
+the risk of having defects
+
+4 PRACTITIONERS’ PERCEPTIONS ON SQA designed our survey as a cross-sectional study where
+PLANNING AND THE FOUR TYPES OF GUID- participants provide their responses at one fixed point in
+ANCE time. The survey consists of 16 closed-ended questions
+
+and 4 open-ended questions. For closed-ended ques-
+In this section, we aim to investigate the practitioners’ tions, we use agreement and evaluation ordinal scales.
+perceptions of (1) the SQA planning activities (RQ1) and To mitigate any inconsistency of the interpretation of
+(2) the proposed four types of guidance to support SQA numeric ordinal scales, we labeled each level of the
+planning (RQ2). Below, we describe the approach and ordinal scales with words as suggested by Krosnick [27]
+present the results. (e.g., strongly disagree, disagree, neutral, agree, and
+
+strongly agree). The format of the survey is an online
+4.1 Approach questionnaire where we use an online questionnaire ser-
+To investigate practitioners’ perceptions of SQA plan- vice as provided by Google Forms. When accessing the
+ning activities and their feedback on our proposed four survey, each participant is provided with an explanatory
+types of data-driven guidance to support such activities, statement that describes the purpose of the study, why
+we conducted a survey study with 50 software practi- the participant is chosen for this study, possible benefits
+tioners. As suggested by Kitchenham and Pfleeger [25], and risks, and confidentiality. The survey takes approx-
+we considered the following steps when conducting our imately 15 minutes to complete and is anonymous.
+study: (1) design and develop a survey, (2) evaluate a (Step 2) Evaluate a survey. We carefully evaluated the
+survey, (3) recruit and select participants, (4) verify data, survey via pre-testing [29] to assess the reliability and
+and (5) analyse data. We describe each step below. validity of the survey. We revised the evaluation process
+
+(Step 1) Design and develop a survey. We first to identify and fix potential problems (e.g., missing,
+devised the concept of data-driven software quality as- unnecessary, or ambiguous questions) until reaching a
+surance (SQA) planning with respect to the 4 types of consensus. Finally, the survey has been rigorously re-
+rules generated by our approach. We then wanted to in- viewed and approved by the Monash University Human
+vestigate practitioners’ perceptions along 4 dimensions, Research Ethics Committee (MUHREC ID: 22542).
+i.e., perceived importance, being used in practice, would (Step 3) Recruit and select participants. The target
+it be time-consuming, and what are key difficulties. We population of the survey is software practitioners. To
+
+
+
+8
+
+SSSQQQSQAAQA A ppA lp l a appllnanlllannaniinnniigngiinn gaagi cacn tactciigvctvtititvi itvtiiavieiteititistecsii estsaasi rarv eearri:er:rte:i::e: s are:
+G1: Risky current practices that lead
+
+ImpoImrpta 6% 12% 82%
+orntacnce 6% 8% 86% the defect model to predict a file as defective
+
+ImIImIpImoppropotraortrntratatcnanecnccecee 6%66%6% 8%88%8% 8688%686%6%
+G2: Non−risky current practices that lead
+
+10% 26% 64%
+BeinBg eusiendg in  uprsaceticde 
+ 10% 20% 70% the defect model to predict a file as clean
+BBeiBeneieginiini ngnug gs u  u epsussdeser deidand i incipni nr ptparpircarcartcaiectctieticticicecee1011%010%0% 2022%020%0% 7077%070%0%
+
+G3: Potential practices to avoid to
+Time-cToimne−scuonmsuimningg 10% 24% 66% 20% 28% 52%
+
+TiTmTTiimieim−eec−e−oc−ccnocosnonusnssmusumuinmigininigngg1011%010%0% 2422%424%4% 666%66%6% not increase the risk of having defects
+
+G4: Potential practices to follow to
+DiffiDifficult 24% 18% 58%
+
+Dc
+8% 12% 80%
+
+DiffDiuifcifififuflicficticluctulultltltt2422%424%4% 1811%818%8% 5855%858%8% decrease the risk of having defects
+
+110000 550 100 50 0 50 100
+101101000 500550500 00 5500 110000
+
+PePercrcee
+0n00
+nt0taage 50550500 101101000
+
+PPePreecrrecrcrcecetnenatntgatatgeaggee Percentage
+
+ReResponse Strongly disagree Disagree Neutral Agree Strongly agree
+RsRepRseeopsessopnspnopossnonesnssesee StStrSottrtrntororgnonlgnlyglgly dlylyd yi dsdi sidaisisaisgasagragergrerereee DDisDiaisisisgasargagergrerereee NNeNueetueruatutrttrlatrrarlallll AAgrAggergrereree SStrSottrtrntororrgnonlgnygnlglygalylyyg laay rgag eragrerergere e Not at all useful Not useful
+
+Response Neutral Useful
+
+Fig. 4: (RQ1) The likert scores of the practitioners’ per- Extremely useful
+
+ceptions of SQA planning along four dimensions i.e.,
+(a) Perceived usefulness
+
+importance, being used in practice, time-consuming, and
+difficulty.
+
+G1: Risky current practices that lead
+10% 26% 64%
+
+the defect model to predict a file as defective
+
+G2: Non−risky current practices that lead
+10% 30% 60%
+
+the defect model to predict a file as clean
+
+reach the target population, we used a recruiting service G3: Potential practices to avoid to
+24% 12% 64%
+
+not increase the risk of having defects
+
+provided by the Amazon Mechanical Turk to recruit G4: Potential practices to follow to
+6% 12% 82%
+
+50 participants as a representative subset of the tar- decrease the risk of having defects
+
+100 50 0 50 100
+get population. We use the participant filter options of Percentage
+"Employment Industry - Software & IT Services" and Not at all important Not important
+"Job Function - Information Technology" to ensure that Response Neutral Important
+
+the recruited participants are valid samples representing Extremely important
+
+the target population. We pay 6.4 USD as a monetary (b) Perceived importance
+incentive for each participant [10, 42].
+
+(Step 4) Verify data. To verify our survey response G1: Risky current practices that lead
+12% 14% 74%
+
+the defect model to predict a file as defective
+data, we manually read all of the open-question re-
+
+G2: Non−risky current practices that lead
+sponses to check the completeness of the responses i.e., 12% 22% 66%
+
+the defect model to predict a file as clean
+
+whether all questions were appropriately answered. We G3: Potential practices to avoid to
+22% 26% 52%
+
+not increase the risk of having defects
+excluded 11 responses that are missing and are not G4: Potential practices to follow to
+
+12% 16% 72%
+related to the questions. In the end, we had a set of 989 decrease the risk of having defects
+
+responses. We summarized and presented the results of 100 50 0 50 100
+Percentage
+
+closed-ended responses in a Likert scale with stacked
+Not at all considered Not considered
+
+bar plots, while we discussed and provided examples of Response Neutral Considered
+
+open-ended responses. Extremely considered
+
+(Step 5) Analyse data. We manually analysed the re- (c) Willingness to adopt
+sponses of the open-ended questions to extract in-depth
+insights. For closed-ended questions, we summarise and Fig. 5: (RQ2) The likert scores of the perceived useful-
+present key statistical results. We compute the agree- ness, the perceive importance, and the willingness to
+ment and disagreement percentage of each closed-ended adopt of the respondents for each proposed guidance.
+question. The agreement percentage of a statement is the
+percentage of respondents who strongly agree or agree 4.2 Respondent Demographics
+with a statement (% strongly agree + % agree), while the
+disagreement percentage of a statement is the percentage The demographics of our 50 practitioner survey respon-
+of respondents who strongly disagree or disagree with a dents are as follows:
+statement (% strongly disagree + % disagree). We also com- • Country of Residence: India (58%) and US (36%)
+pute an agreement factor of each statement as suggested • Roles: developers (50%), managers (42%), and others
+by Wan et al. [53]. The agreement factor is a measure of (8%)
+agreement between respondents, which is calculated for • Years of Professional Experience: less than 5 years
+each statement using the following equation: (% strongly (26%), 6–10 years (38%), 11–15 years (22%), 16–20
+agree + % agree)/(% strongly disagree + % disagree). High years (12%), and more than 25 years (2%)
+values of agreement factors indicate a high agreement • Programming Language: Java (44%), Python (30%),
+of respondents to a statement. The agreement factor of 1 C/C++/C# (28%), and JavaScript (12%)
+indicates that the numbers of respondents who agree and • Use of Static Analysis Tools: Yes (62%) and No (38%)
+disagree with a statement are equal. Finally, low values These demographics indicate that the responses are
+of agreement factors indicate that a high disagreement collected from practitioners who reside in various coun-
+of respondents to a statement. tries, have a range of roles, varied years of experience,
+
+
+
+9
+
+and varied programming language expertise. This indi- agree (while having a very few of those who disagree)
+cates that our findings are likely not bound to specific that all proposed guidance are useful, important, and
+characteristics of practitioners. willing to adopt these four types of guidance.
+
+Respondents provided positive feedback of our pro-
+4.3 Results posed four types of guidance since these types of guid-
+
+ance can help with SQA planning (e.g., R37: “It allows the
+(RQ1) How do practitioners perceive SQA planning QA team who might not necessarily know the changes that
+activities? have gone into each program to focus their energy on the most
+Results. For SQA planning activities, 86% of the risky components, programs, or functionalities. It also gives
+respondents perceive as important and 70% perceived managers a great view of the risks involved and how it could
+as being used in practice. However, 66% perceived potentially be reduced or mitigated.”).
+as time-consuming and 58% perceived as difficult. However, some respondents raise critical concerns
+Figure 4 shows the distributions of likert scores of the related to the potential negative impact on the devel-
+practitioners’ perceptions of SQA planning activities. opment process made by these four types of guidance.
+The survey results show that SQA planning activities are For example, cost of implementation and internal re-
+perceived as important by 86% of the respondents, and sistance (e.g., R27: “Some extra time spent improving the
+are being used in practice by 70% of the respondents. process. Needing to implement the process including training.
+However, they are perceived as time-consuming by 66% Employee resistance to adoption.”), and lax development
+of the respondents and as difficult to do by 58% of the re- practice (e.g., R30: “Sometimes we get too reliant on the
+spondents. Table 1 also shows that the agreement factor automated processes and other things slip through ...”).
+of all studied dimensions of SQA planning activities are
+of above 1 with the values of 2.42 - 14.33. This indicates 5 OUR AI-DRIVEN SQAPLANNER APPROACH
+that most respondents agree (while having very few Our SQAPlanner consisted of two major phases: (1)
+respondents who disagree) that SQA planning activities developing defect prediction models; and (2) generating
+are important, being used in practice, time-consuming, four types of guidance using a local rule-based model-
+and difficult. agnostic technique to explain the predictions of defect
+
+Respondents described that some of the SQA planning models. Figure 6 presents an overview workflow of our
+activities in their organisations involve human heuris- SQAPlanner approach.
+tics in decision-making. For example, they used docu-
+mentation and review checklists [7] (e.g., R34: “Lessons
+learnt from projects are documented and common mistakes 5.1 Phase 1: Developing Defect Prediction Models
+are included in review checklists to ensure that they are not There is a plethora of classification techniques that have
+repeated.”), and team meetings (e.g., R10: “team meetings, been used to develop defect prediction models [13,
+brainstorm, and in house system”, and R48: “... through 17, 48]. We first select the following five classification
+step by step manual processes working together in a core techniques, i.e., Decision Trees (DT), Logistic Regression
+team”). These findings indicates that a data-informed (LR), multi-layer Neural Network (NN), Random Forest
+SQA planning tool is needed to support QA teams make (RF), and Support Vector Machine (SVM). These classi-
+better data-informed decision- and policy-making. fication techniques are popularly-used in defect predic-
+
+tion studies. Since the performance of defect prediction
+models may vary depending on the studied datasets,
+
+(RQ2) How do practitioners perceive our proposed we first conduct a preliminary analysis to identify the
+four types of guidance to support SQA planning? most accurate classification techniques for our study. We
+Results. Both (G1) the guidance on risky practices that use the implementation of the selected five classification
+lead a model to predict a file as defective and (G4) techniques provided by the scikit-learn Python package.
+the guidance on the practices to follow to decrease For each training dataset, we build defect prediction
+the risk of having defects are perceived as among the models using all of the 65 software metrics (see Table 3
+most useful, most important, and most considered will- and Table 4). To ensure that our experiment is strictly-
+ingness to adopt by the respondents. Figure 4 shows controlled and fair across the studied classification tech-
+the likert scores of the practitioners’ perceptions of SQA niques, we use the default setting of the classification
+planning along four dimensions i.e., importance, being techniques provided by the scikit-learn Python package,
+used in practice, time-consuming, and difficulty. The sur- do not apply feature selection techniques, and do not ap-
+vey results show that all types of guidance are perceived ply class rebalancing techniques. This setting will ensure
+as useful by 52%-80% of the respondents, important by that the results are not bound to (i.e., not sensitive to)
+60%-82% of the respondents, and considered willing to the randomization of the non-deterministic optimization
+adopt by 52%-72% of the respondents. Similar to RQ1, algorithms [50], feature selection algorithms [23], and
+we observed that the values of agreement factor for all class rebalancing algorithms [45]. Then, we evaluate
+of the proposed guidance are higher than 1 for all of the the performance of each classification technique using
+studied dimensions. This suggests that most respondents testing datasets. Then, we measure the predictive ability
+
+
+
+10
+
+Rank 1 Rank 2 Rank 3
+Generate 
+
+Testing   predictions ●
+
+Dataset Predictions
+0.8
+
+Develop 
+Defect  0.6
+Models ●
+
+Training   Defect Models SQAPlanner If {DEV>10} then {BUG} ●
+
+Dataset Phase 1: Developing Defect Models Phase 2: Generating Rule-based Explanations 0.4 ●
+
+ID,similarity,class ●
+
+Select 0.2
+instances from ID,predict
+neighbourhood Generate T RF SVM NN DT LR
+
+F Association 
++ predictions T Rule  Classification Techniques
+
+from global T Mining 
+defect models F
+
+Generate F Algorithm If {DEV>10} then {BUG}
+instances from Fig. 7: The Non-Parametric Scott-Knott ESD ranking of
+neighbourhood
+
+ID,similarity,class the studied classification techniques with the distribu-
+tion of the AUC values.
+
+Fig. 6: An overview diagram of our SQAPlanner to
+generate four types of guidance in the form of rule-based
+explanations for each file. techniques achieve a median AUC value of 0.74, 0.63,
+
+0.65, and 0.59 for SVM, DT, NN, LR, respectively. Finally,
+the ScottKnottESD test confirms that random forests
+
+of defect models using an Area Under the Receiver statistically outperforms other classification techniques.
+Operating Characteristic Curve (AUROC or AUC). AUC For the rest of the paper, we focus on the random forest
+measures the ability to distinguish defective and clean models due to the following reasons:
+files. The values of AUC range from 0 to 1. The AUC • Random Forest is one of the most accurate studied
+value of 0 is considered the worst performance, the AUC classification techniques for our case study and is
+value of 0.5 is considered as merely random guessing, less sensitive to parameter settings [48, 50];
+and the AUC value of 1 is considered the best perfor- • Random Forest is a classification technique that is
+mance [18]. to a certain degree explainable with its own built-
+
+Then, we use the Non-Parametric Scott-Knott ESD in feature importance techniques (e.g., gini impor-
+test (Version 3.0) to find the classification techniques tance and permutation importance) [5, 21, 23, 24].
+that perform best across our studied datasets. We chose Since SVM does not have its own built-in feature
+the Non-Parametric Scott-Knott ESD test, since it does importance techniques, we excluded SVM from our
+not produce overlapping groups like other post-hoc analysis; and
+tests (e.g., Nemenyi’s test) [49] and it does not require • Random Forest is a classification technique that is
+the assumptions of normal distributions, homogeneous robust to overfitting [48], outliers [45], and class
+distributions, and the minimum sample size. The Non- mislabelling [47].
+Parametric ScottKnott ESD test is a multiple compar-
+ison approach that leverages a hierarchical clustering 5.2 Phase 2: Generating Four Types of Guidance
+to partition the set of median values of techniques Using a Local Rule-based Model-agnostic Technique
+(e.g., medians of variable importance scores, medians
+of model performance) into statistically distinct groups There are 5 major steps for generating four types of guid-
+with non-negligible difference. The mechanism of the ance using a local rule-based model-agnostic technique.
+Non-Parametric Scott-Knott ESD test consists of 2 steps: First, for each instance to be explained (iexplain), we
+(Step 1) Find a partition that maximizes the median select the nearest instances surrounding such an instance
+of each distribution between groups using the non- to be explained from the training set (Inearest), cf. Line
+parametric Kruskal-Wallis test with Chi-square statistics. 1. Second, we generate synthetic instances (Isynthetic)
+(Step 2) Split the distributions into two groups or merg- around the neighbourhood of each instance to be ex-
+ing into one group using the non-parametric Cliff |δ| plained, cf. Line 2. Then, we create a set of combined
+effect size. The implementation of the Non-Parametric instances as Icombined = Inearest ∪ Isynthetic, cf. Line 3,
+ScottKnott ESD test is available in the ScottKnott ESD R which is a combination of the nearest instances and
+package (Version 3.0).4 the synthetic instances. Third, we use the global defect
+
+Random Forest is the most accurate studied classifi- prediction models to generate the predictions of the
+cation technique with a median AUC value of 0.77. combined instances (i.e., PI ), cf. Line 4. Fourth, to
+
+combined
+
+Figure 7 presents the Scott-Knott ESD ranking of the learn the associations between the synthetic features and
+studied classification techniques with the distribution the predictions of the global defect prediction models,
+of the AUC values. We find that other classification we use the Magnum Opus association rule learning
+
+algorithm [55] to generate a set of optimal association
+4. http://github.com/klainfo/ScottKnottESD rules that are the most predictive (i.e., rules with the
+
+AUC
+
+
+
+11
+
+Algorithm 1: A Local Rule-based Model Inter-
+Tr pretability with k-optimal Associations
+
+X ID,score ID,score,class
+T ID,score,class
+
+0.9 T T Input : Trx − training instances without target
+exponential() 0.8 T F
+
+Ie 0.7 T Try − target (class label) of training instances
+0.6 ID,score,class iexplain − an instance need to be explained
+
+Euclidean   0.5 F
+M − a global defect prediction model
+
+distances Instances  F
+F Selected instances 
+
+around the   around the   Nfeatures − # of features
+neighbourhood neighbourhood N
+
+(sorted by sim. scores) synthetic− # of the new instances to be generated
+Output: Gi − Four types of rule-based guidance for the
+
+explain
+instance to explain i
+
+Fig. 8: An approach to select instances around the neigh- explain
+
+1: I
+bourhood. nearest ← SelectFromNeighbourhood(Trpx, iexplain)
+
+2: Isynthetic ←GenerateFromNeighbourhood(Iselected,
+Nfeatures, Nsynthetic, iexplain)
+
+3: Icombined←Inearest ∪ Isynthetic
+highest confidence) and the most interesting (i.e., rules 4: PI ← GetPredictFromGlobalModel(I
+
+combined combined,M)
+5: R
+
+with the highest lift) from the combined instances and i ← GenerateMagnumOpusRules(I
+explain combined, PI )
+
+combined
+6: Gi ← GenerateRuleGuidance(R
+
+explain i , i
+explain explain, Pi )
+
+explain
+their predictions, cf. Line 5. Finally, we classify the set of 7: return Giexplain
+
+association rules into four types of rule-based guidance
+with respect to a contingency table of such association
+rules and identify the best rule for each type of guidance,
+cf. Line 6. Below, we explain each major step in details. DEFECT) is used to determine the boundary of the
+
+neighbourhood. The selected instances are instances that
+Phase 2-1: Select the nearest instances surrounding an have the similarity scores of above 0.8 (i.e., sim ≥ 0.8).
+instance to be explained
+We assume that instances from the neighbourhood of the Phase 2-2: Generate synthetic instances to expand the
+instance to be explained have approximately equivalent neighbourhood
+characteristics to an instance to be explained. Figure 8 The number of selected nearest instances in the neigh-
+presents an overview of the steps to select the nearest bourhood may not be enough to accurately learn the
+instances from the neighbourhood of the instance to be behaviour of the instance to be explained. Thus, we
+explained. In particular, there are three steps as follows: generate synthetic instances to expand the neighbour-
+
+(Step 1) – Normalize feature values. Different features hood. To do so, we use the crossover (or interpolation)
+may have different units and thus their range values may technique and the mutation technique to generate new
+vary greatly. For example, LOC (e.g., 100 lines of code) synthetic instances while ensuring that the majority of
+and Ownership (e.g., an ownership score of 0.5). Thus, such synthetic instances are within the neighbourhood
+we first apply a Z-score normalization to each feature in of the instance to be explained. Below, we describe how
+defect datasets. we generate synthetic instances using the crossover and
+
+(Step 2) – Compute the similarity scores of instances the mutation techniques in details.
+in training data. To do so, we first compute the Eu- Generate synthetic instances using the crossover
+clidean distance between the instances in the training technique. To do so, we randomly select two different
+data (Trx) and the instance to be explained (ie). Then, instances from the neighbourhood of the instance to
+we apply an exponential kernel function to convert be explained. Then, we generate the synthetic instances
+such Euclidean distances into similarity scores. using an based on the crossover technique using the following
+exponential kernel function to make the distance more equation:
+linearly distributed.
+
+(Step 3) – Select the smallest number of the most Icrossover = x+ (y − x) ∗ α (1)
+similar instances using the top-N instances of each
+class. To do so, we first sort the similarity scores of where x and y are random parent instances from the
+instances (sim) in descending order for each class. Then, training set, and α is a randomly generated number
+we select the top N instances of each class from the between 0 and 1.
+sorted similarity scores. The lowest similarity score of the Generate synthetic instances using the mutation
+top N instances of each class (i.e., Min(simTrue techniques. To do so, we randomly select three different
+
+Nth , sim
+False
+Nth ))
+
+is used as a threshold to select the minimum number instances from the neighbourhood of the instance to be
+of the most similar instances. Such the lowest similarity explained. Then, we generate synthetic instances based
+score among the top N instances of both classes is on the mutation technique [44] using the following equa-
+used to determine the boundary of the neighbourhood. tion:
+For example, given an example of N = 10, the lowest Imutation = x+ (y − z) ∗ µ (2)
+similarity scores of the top-10 instances with the highest
+similarity scores of DEFECT and CLEAN classes are where x, y and z are random parent instances from the
+0.8 and 0.9, respectively. Therefore, in this example, training set, and µ is a randomly generated number
+the similarity score of 0.8 (the 10th instance from class between 0.5 and 1.
+
+Select the top-N instances 
+of each class
+
+Use the similarity score of  
+!min(simT
+
+Nth, simF
+Nth) as a threshold 
+
+ to select the minimum number  
+of the highest similar instances 
+
+
+
+12
+
+Phase 2-3: Generate the predictions of the nearest in- G2: Non-risky current practices that lead the defect
+stances and the synthetic instances from defect prediction model to predict a file as clean.
+models Technical Name. Contradicting Rules (<−).
+Firstly, we name a set of such the nearest instances Definition. if LHS = true, then RHS = false.
+
+Example. {LOC < 500} associate
+(generated in Phase 2-1) and the synthetic instances =====⇒ CLEAN
+(generated in Phase 2-2) as the combined instances Interpretation. This example is a contradicting rule,
+Icombined, where Icombined = Inearest ∪ Isynthetic Then, we since (1) the antecedent (LHS) of the rule hold true
+generate the predictions of such combined instances in as the actual LOC of iexplain (i.e., 200) is actually
+the neighbourhood (i.e., PredictionI lower than 500, yet (2) the consequent (RHS) of the
+
+nearest∪I ) from
+synthetic
+
+defect prediction models to learn the behaviour and the rule does not hold true as the prediction of iexplain
+logics of such defect prediction models. generated by the global defect prediction model is
+
+DEFECT.
+Phase 2-4: Generate association rules using Magnum G3: Potential practices to avoid to not increase the risk
+Opus association rule mining of having defects.
+The Magnum OPUS association rule mining algorithm Technical Name. Hypothetical Supporting Rules
+
+(<H+
+performs statistically sound association rule mining ).
+by combining k-optimal association discovery tech- Definition. if LHS = false, then RHS = true.
+
+Example. {LOC > 300} associate
+niques [56] and the OPUS search algorithm [55] to find =====⇒ DEFECT
+the k most interesting associations according to a defined Interpretation. This example is a hypothetical sup-
+criterion (e.g., lift, confidence, coverage). The effective- porting rule, since (1) the antecedent (LHS) of the
+ness of our SQAPlanner relies on this algorithm to gen- rule does not hold true as the actual LOC of iexplain
+erate the rule-based explanations. With the functionality (i.e., 200) is not higher than 300, yet (2) the conse-
+of the OPUS search algorithm, it will effectively prune quent (RHS) of the rule hold true as the prediction
+the search space by discarding the associations which of iexplain generated by the global defect prediction
+are likely to be spurious, and removing false positives model is DEFECT.
+by performing Fisher’s exact hypothesis test. We use an G4: Potential practices to follow to decrease the risk
+implementation of the k-optimal association rule mining of having defects.
+technique as provided by the BigML platform.5 Technical Name. Hypothetical Contradicting Rules or
+
+Counterfactual Rules (<H−).
+Phase 2-5: Generate four types of rule-based guidance Definition. if LHS = false, then RHS = false.
+
+Example. {LOC < 100} associate
+Finally, we classify the optimal set of association rules =====⇒ CLEAN
+that are identified by Magnum OPUS into four categories Interpretation. This example is a hypothetical con-
+with respect to a contingency table of the LHS and RHS tradicting rule, since (1) the antecedent (LHS) of
+of the association rules. Then, we identify the best rule the rule does not hold true as the actual LOC of
+that is the most predictive and the most interesting for iexplain (i.e., 200) is not lower than 100, and (2) the
+each type of guidance as the output of SQAPlanner. consequent (RHS) of the rule does not hold true
+
+To better illustrate how we classify the output rules as the prediction of iexplain generated by the global
+generated by Magnum OPUS, we use four examples defect prediction model is DEFECT.
+of an association rule as a subject of this explanation.
+Given an instance to explain iexplain that has 200 lines 6 EXPERIMENTAL DESIGN AND RESULTS
+of code (LOC = 200) and is predicted as DEFECT In this section, we aim to investigate (RQ3) the effec-
+by the global defect prediction model, our SQAPlanner tiveness, (RQ4) the stability, and (RQ5) the applicability
+framework generates the following four types of rule- of the rule-based explanations generated by our SQA-
+based explanations: Planner. Below, we describe the studied projects, the
+G1: Risky current practices that lead the defect model experimental design, and present the results.
+
+to predict a file as defective.
+Technical Name. Supporting Rules (<+). 6.1 Studied Projects
+Definition. if LHS = true, then RHS = true. To select some suitable projects, we identified three
+Example. {LOC > 150} associate
+
+=====⇒ DEFECT important criteria that need to be satisfied:
+Interpretation. This example is a supporting rule, • Criterion 1 — Publicly-available defect datasets:
+since (1) the antecedent (LHS) of the rule hold true To support verifiability and foster replicability of
+as the actual LOC of i our study, we choose to train our defect prediction
+
+explain (i.e., 200) is actually
+higher than 150, and (2) the consequent (RHS) of the models using publicly available defect datasets.
+rule hold true as the prediction of iexplain generated • Criterion 2 — Multiple releases: The central hy-
+by the global defect prediction model is DEFECT. pothesis of our approach is that the guidance that is
+
+derived from past knowledge (a release k−1) can be
+5. https://bigml.com/ used to explain the predictions of defective files in
+
+
+
+13
+
+TABLE 2: A statistical summary of the studied systems.
+Name Description #DefectReports No. of files Defective Rate KLOC Studied Releases
+ActiveMQ Messaging and Integration Patterns server 3,157 1,884-3,420 6%-15% 142-299 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.8.0
+Camel Enterprise Integration Framework 2,312 1,515-8,846 2%-18% 75-383 1.4.0, 2.9.0, 2.10.0, 2.11.0
+Derby Relational Database 3,731 1,963-2,705 14%-33% 412-533 10.2.1.6, 10.3.1.4, 10.5.1.1
+Groovy Java-syntax-compatible OOP for JAVA 3,943 757-884 3%-8% 74-90 1.5.7, 1.6.0.Beta_1, 1.6.0.Beta_2
+HBase Distributed Scalable Data Store 5,360 1,059-1,834 20%-26% 246-534 0.94.0, 0.95.0, 0.95.2
+Hive Data Warehouse System for Hadoop 3,306 1,416-2,662 8%-19% 287-563 0.9.0, 0.10.0, 0.12.0
+JRuby Ruby Programming Lang for JVM 5,475 731-1,614 5%-18% 105-238 1.1, 1.4, 1.5, 1.7
+Lucene Text Search Engine Library 2,316 8,05-2,806 3%-24% 101-342 2.3.0, 2.9.0, 3.0.0, 3.1.0
+Wicket Web Application Framework 3,327 1,672-2,578 4%-7% 109-165 1.3.0.beta1, 1.3.0.beta2, 1.5.3
+
+TABLE 3: A summary of the studied code metrics.
+Granularity Metrics Count
+File AvgCyclomatic, AvgCyclomaticModified, AvgCyclomaticStrict, AvgEssential, AvgLine, AvgLineBlank, AvgLineCode, 37
+
+AvgLineComment, CountDeclClass, CountDeclClassMethod, CountDeclClassVariable, CountDeclFunction, CountDe-
+clInstanceMethod, CountDeclInstanceVariable, CountDeclMethod, CountDeclMethodDefault, CountDeclMethodPrivate,
+CountDeclMethodProtected, CountDeclMethodPublic, CountLine, CountLineBlank, CountLineCode, CountLineCod-
+eDecl, CountLineCodeExe, CountLineComment, CountSemicolon, CountStmt, CountStmtDecl, CountStmtExe, MaxCy-
+clomatic, MaxCyclomaticModified, MaxCyclomaticStrict, RatioCommentToCode, SumCyclomatic, SumCyclomaticModi-
+fied, SumCyclomaticStrict, SumEssential
+
+Class CountClassBase, CountClassCoupled, CountClassDerived, MaxInheritanceTree, PercentLackOfCohesion 5
+Method CountInput_{Min, Mean, Max}, CountOutput_{Min, Mean, Max}, CountPath_{Min, Mean, Max}, MaxNesting_{Min, 12
+
+Mean, Max}
+
+TABLE 4: A summary of the studied process and own- Thus, we finally selected a corpus of publicly available
+ership metrics. defect datasets provided by Yatish et al. [58] where the
+
+Metrics Description ground-truths are labeled based on the affected releases.
+Process Metrics These datasets consist of 32 releases that span 9 open-
+COMM The number of Git commits source, real-world, non-trivial software systems. Table 2
+ADDED_LINES The normalized number of lines added to the module
+DEL_LINES The normalized number of lines deleted from the mod- shows a statistical summary of the studied datasets. Each
+
+ule dataset has 65 software metrics along 3 dimensions, i.e.,
+ADEV The number of active developers 54 code metrics, 5 process metrics, and 6 human metrics.
+DDEV The number of distinct developers
+Ownership Metrics Table 3 shows a summary of the static code metrics,
+MINOR_COMMIT The number of unique developers who have contributed while Table 4 shows a summary of the process and
+
+less than 5% of the total code changes (i.e., Git commits) human metrics. The full details of the data collection
+on the module
+
+MINOR_LINE The number of unique developers who have contributed process are available at Yatish et al. [58].
+less than 5% of the total lines of code on the module
+
+MAJOR_COMMIT The number of unique developers who have contributed
+more than 5% of the total code changes (i.e., Git commits)
+on the module
+
+MAJOR_LINE The number of unique developers who have contributed 6.2 Experimental Design
+more than 5% of the total lines of code on the module
+
+OWN_COMMIT The proportion of code changes (i.e., Git commits) made
+by the developer who has the highest contribution of We hypothesize that the guidance that is derived from
+code changes on the module past knowledge (a release k − 1) can be used to explain
+
+OWN_LINE The proportion of lines of code written by the developer
+who has the highest contribution of lines of code on the the predictions of defective files in the target releases (a
+module release k) and be applicable to prevent software defects
+
+in future releases (a release k + 1). Thus, we evaluate
+our approach (see Figure 9) using a set of three con-
+
+the target releases (a release k) and be applicable to secutive releases (k-1, k, and k+1) for training, testing,
+prevent software defects in future releases (a release and explanation evaluation, respectively. We first trained
+k + 1). Thus, we need multiple releases for each our defect models using a random forest classification
+software project to validate our hypothesis. technique on a training release (i.e., a release k−1). Then,
+
+• Criterion 3 — Labels of defective files are based on we generate rule-based explanations for each file in the
+actual affected releases: Prior work raises concerns testing release (i.e., a release k). Finally, we evaluate
+that the approximation of the post-release window the applicability of the rule-based explanations with the
+periods (e.g., 6 months) that are popularly-used in explanation evaluation release (i.e., a release k+1). Let’s
+many defect datasets may introduce bias to the con- take an example of the ActiveMQ project, we first use
+struct to the validity of our results [58]. Instead of the release 5.0.0 for training, the release 5.1.0 for testing,
+relying on traditional post-release window periods, and the release 5.2.0 for explanation evaluation. We
+we choose to use defect datasets that are labeled repeat the experiment similarly for the other consecutive
+based affected releases, as suggested by recent stud- releases (i.e., {5.1.0, 5.2.0, 5.3.0}, {5.2.0, 5.3.0, 5.8.0}) and
+ies [8, 58]. for other projects.
+
+
+
+14
+
+For example, a rule-based explanation (G1) of {DEV >
+10} associate
+
+=====⇒ DEFECT with a confidence value of 0.8 in-
+Training  
+Dataset  Defect Models dicates that, there are 80% of the files that fulfill the risky
+
+(Release k-1) (RQ3) How effective is the practice of having more than ten developers who touch
+guidance generated by our 
+
+SQAPlanner? a file are actually defectives. A high confidence value
+Generate of the G1 guidance indicates that such risky practice is a
+
+Explanations
+Testing  (RQ4) How stable is the high confident risky practice to many files of the dataset.
+Dataset  guidance generated by our 
+
+(Release k) SQAPlanner Rules SQAPlanner? Lift measures how many times more often the an-
+tecedent and consequent occur together compared to
+
+(RQ5) How applicable is 
+the guidance generated by what would be expected when they (i.e., both antecedent
+
+Explanation   our SQAPlanner?
+Evaluation  and consequent) were statistically independent, which
+
+Dataset  can be defined as follows:
+(Release k+1)
+
+Support(p→q)
+Fig. 9: An evaluation framework of our SQAPlanner Lift(p→ q) = Support(p)×Support(q)
+
+approach For example, a rule-based explanation (G1) of {DEV >
+10} associate
+
+=====⇒ DEFECT with a life value of 5 indicates
+that, the file will be 5 times (i.e., 500%) more likely to
+
+6.3 Results be defective if the rule is fulfilled. A lift value greater
+(RQ3) How effective are the rule-based explanations than one means that a file is likely to be defective if the
+generated by our SQAPlanner approach when com- conditions are fulfilled, while a lift value less than one
+pared to the state-of-the-art approaches? means a file is unlikely to be defective if the conditions
+Motivation. Our SQAPlanner is based on the assump- are fulfilled. A high lift value of the G1 guidance in-
+tion that our rule-based explanations are generated dicates that there is a high chance that a file is likely
+based on the approximation of the characteristics of files to be defective if such risky practice is fulfilled. Thus,
+that are similar to the file to be explained. This assump- practitioners should pay attention to guidance rules with
+tion is similar to those of many local rule-based model- a high lift value.
+agnostic techniques [15, 39, 40] that the behaviour of the Baseline comparison. We compare our SQAPlanner
+instance to be explained is similar to the behaviours of with the two state-of-the-art local rule-based model-
+the instances around its neighbourhood. According to agnostic techniques, i.e., Anchor [40] and LORE [15] [39].
+the definition of rule-based explanations in Section 2.4, Anchor, an extension of LIME [39], was proposed by
+our SQAPlanner generated rule-based explanations will Ribeiro et al. [40]. The key idea of Anchor is to select if-
+be considered effective if such rule-based explanations then rules – so-called anchors – that have high confidence,
+achieve a high coverage and high confidence value. in a way that features that are not included in the rules
+Approach. To address RQ3, we evaluate the rule-based do not affect the prediction outcome if their feature
+explanations generated by our SQAPlanner using the values are changed. In particular, Anchor selects only
+traditional association rule evaluation measures (i.e., rules with a minimum confidence of 95%, and then
+coverage, confidence, and lift). selects the rule with the highest coverage if multiple
+
+Coverage measures support of the antecedent of an rules have the same confidence value.
+association rule, i.e., the percentage of files that support LORE is proposed by Guidotti et al. [15]. For each
+the rule conditions. Formally, Coverage(p → q) = instance to be explained, LORE generates files around
+Support(p) where Support(p) is the proportion of files the neighbourhood using a genetic algorithm. LORE
+that fulfill p. then obtains predictions of the generated files from the
+
+| global defect models to learn the behaviour and the
+files ∈ Dataset, such that files fulfill p|
+
+Support(p) = logics of the defect models. Finally, a decision tree is
+#total files built on the defined neighbourhood of the instance to
+
+For example, a rule-based explanation (G1) of {DEV > be explained and is then later converted to rules.
+10} associate
+
+=====⇒ DEFECT with a coverage value of 0.9 Results. Figure 10 presents the results for coverage, con-
+indicates that 90% of the files fulfill a risky practice of fidence, and lift of the local rule-based model-agnostic
+having more than ten developers who touch a file. A techniques.
+high coverage value of the G1 guidance indicates that (Coverage) At the median, 89% of files are supported
+such a risky practice is a common risky practice to many by the rule-based explanations, suggesting that our
+files of the dataset. SQAPlanner outperforms the LORE and Anchor local
+
+Confidence (i.e., Precision or Strength) measures the rule-based model-agnostic techniques. Figure 10 shows
+percentage of files that fulfill the antecedent and conse- that the median coverage is 89%, 34%, and 6% for
+quent together over the number of files that only fulfill our SQAPlanner, LORE, and Anchor, respectively. We
+the antecedent, which can be defined as follows: suspect that the high coverage values that are achieved
+
+Confidence(p→ q) = Support(p→ q)/Support(p). by our SQAPlanner are due to the flexibility of the k-
+
+
+
+15
+
+Coverage Confidence Lift 1.0 ●
+
+1.00 ● 1.00 ●
+
+0.8
+15
+
+0.75 0.75
+0.6
+
+0.50 10
+0.50 ●
+
+0.4
+● ●
+
+0.25 0.25 5 Our Framework LORE Anchor
+Model−Agnostic Techniques
+
+0.00 0.00 ● 0 ●
+
+k r Fig. 11: (RQ4) The distribution of the Jaccard Coefficients
+ew
+
+or RE
+LO ch
+
+o
+An ew
+
+or
+k
+
+m LO
+RE
+
+Anc
+ho
+
+r
+RE
+
+ew
+or
+
+k
+LO Anc
+
+ho
+r
+
+of the rule-based model-agnostic techniques.
+
+Our
+ F
+
+ra
+m
+
+ur
+ F
+
+ra
+m
+
+ra
+ F
+
+OurO
+Techniques (RQ4) How stable are the rule-based explanations
+
+generated by our SQAPlanner approach when they
+Fig. 10: (RQ3) The distribution of the evaluation mea- are regenerated?
+sures of our rule-based explanations when compared to
+baseline approaches (i.e., LORE and Anchor). Motivation. Our SQAPlanner approach and the two
+
+state-of-the-art local rule-based model-agnostic tech-
+niques (i.e., LORE and Anchor) involve random data
+generation when generating synthetic instances around
+
+optimal search that allows us to search particularly for the neighbourhood. As such, the randomization bias
+rules with high coverage. High coverage is important as may produce different rule-based explanations when the
+it is a measure for how representative a rule is for a given approaches are re-executed. Thus, we aim to investigate
+dataset, so that our results suggest that our SQAPlanner the consistency of the rule-based explanation of the same
+achieves the most representative rules. instance when these model-agnostic techniques are re-
+
+(Confidence) At the median, 99% of files are sup- executed.
+ported by the antecedent and the consequent of Approach. To address RQ4, we repeat our experiment
+the rule-based explanations, which outperforms the ten times to investigate the stability of our rules. Since
+LORE and Anchor model-agnostic techniques. Fig- the rules generated by the baseline comparison are
+ure 10 shows the distributions of the confidence for optimized based on confidence only, we focus on the
+our SQAPlanner, LORE, and Anchor, respectively. We rules generated by our approach that are optimized for
+find that LORE and Anchor achieve high confidence confidence as well.
+with median confidence of 95% and 98%, respectively. For each rule-based explanation of each file, we use the
+We find that the comparable confidence values achieved Jaccard coefficient to measure the consistency of the gen-
+by LORE and Anchor have to do with the main opti- erated rule-based explanations. The Jaccard coefficient
+mization goal of Anchor and LORE, since both LORE compares the common and the distinct features in two
+and Anchor techniques aim to search for rules with given sets (e.g., X and Y ) using the following equation:
+the highest confidence. Nevertheless, we find that our J(X,Y ) = |X ∩ Y |/|X ∪ Y |. The coefficient ranges from
+SQAPlanner achieves the highest median confidence of 0% to 100%. The higher the coefficient the higher the
+99%. similarity of rules over two independent runs.
+
+(Lift) The rule-based explanations generated by our Results. Our SQAPlanner approach produces the most
+SQAPlanner achieve a median lift value of 6.6, which consistent rule-based explanations when compared to
+outperforms the LORE and Anchor model-agnostic LORE and Anchor. Figure 11 shows that our SQAPlan-
+techniques. Figure 10 shows that the median lift is 6.6, ner achieves a median Jaccard coefficient of 0.92, while
+5.2, 0.98 for our SQAPlanner, LORE and Anchor respec- LORE and Anchor achieve a median Jaccard coefficient
+tively. The highest lift value of 6.6 indicates that files will of 0.42, and 0.79, respectively. In other words, for each
+be 6.6 times (i.e., 660%) more likely to be defective if the prediction of an instance to be explained, our rule-
+rule is matched. Similarly, the highest lift value of our based explanations are (at the median) 92% consistent
+SQAPlanner can be attributed to the flexibility of the k- with the rule-based explanations when re-executing our
+optimal search that allows us to search particularly for framework in multiple independent runs. In addition,
+rules with the highest lift. On the other hand, Anchor our SQAPlanner’s rule-based explanations are (at the
+achieves a lower lift score, since Anchor constructs the median) 13% and 50% more consistent than the rule-
+neighbourhood in a way that it contains only files of the based explanations generated by Anchor and LORE,
+same class as the instance in consideration. Thus, the lift respectively. We suspect that the highest consistency
+scores for Anchor under these circumstances are equal achieved by our approach is a result of the more ro-
+to the confidence values. bust nature of our framework when selecting similar
+
+Value
+
+Jaccard Coefficient
+
+
+
+16
+
+instances from the training data and when generating RQ5-b: Are hypothetical contradicting rules
+synthetic instances around the neighbourhood (as de- not applied when the prediction of an instance
+scribed in Sections 5.2 and 5.2). In contrast, Anchor uses does not change from defective in a testing release
+a bandit algorithm [26] to generate neighbours, while k to clean in a validation release k + 1? Hypothetical
+LORE uses a genetic algorithm to generate neighbours. contradicting rules are considered applicable if such
+
+rules do not follow the actual feature values in the
+validation data when the prediction of the instance
+
+(RQ5) How applicable are the rule-based explanations does not change from defective in k to clean in k + 1.
+generated by our SQAPlanner approach to minimize For example, we consider B.java to be predicted to
+the risk of having defects in the subsequent re- be defective in both testing data and validation data.
+leases? Thus, we consider that the generated hypothetical
+
+Motivation. The central hypothesis of our approach contradicting rule (e.g., {LOC < 1100} associate
+=====⇒ CLEAN)
+
+is that the rule-based explanations derived from past is applicable if such rule does not follow the actual
+knowledge (a release k − 1) can be used to explain the feature values in the validation data (i.e., LOC = 1,500).
+predictions of defective files in a target release (a release For each perspective, we compute the number of
+
+instances where the hypothetical contradicting rule does
+k), and thus be applicable to guide SQA planning to
+prevent software defects in future releases (release follow and does not follow the actual feature values in
+
+k+1).
+We want to investigate what are the proportion of files the subsequent release in RQ5-a and RQ5-b, respectively.
+where the rule-based explanations are satisfied and not Figure 13 presents the proportion of files where its
+satisfied with the actual feature values in the subsequent hypothetical contradicting rule does follow (RQ5-a) and
+release. does not follow (RQ5-b) the actual feature values in the
+
+subsequent release for each measure.
+Approach. To address RQ5, we focus on the hypo-
+thetical contradicting rules, which are rules that guide Results. For 55%-87% of the instances in the subse-
+what are the practices to follow to decrease the risk quent releases, our SQAPlanner’s hypothetical con-
+of having defects (i.e, whether the prediction of the tradicting rules are correctly applicable when the
+same file could be reversed if the rule is followed in prediction of rules changes from defective to clean.
+a subsequent release). We note that not all of the files Figure 13 shows that there are 87%, 82% and 55% of
+whose hypothetical contradicting rules can be gener- the instances in the subsequent releases that our hy-
+ated by Anchor and LORE, since we find that LORE pothetical contradicting rules follow the actual feature
+produces a maximum of 69% hypothetical contradicting values in the validation data with respect to coverage,
+rules across projects (median amount of rules produced confidence, and lift, respectively. This finding indicates
+per project is 41%), and Anchor by definition does not that our SQAPlanner’s hypothetical contradicting rules
+generate any hypothetical contradicting rules. Since our learned from past knowledge (k − 1) to explain the
+approach is the only one that can generate hypothetical predictions of instances from the target release (k) could
+contradicting rules, we focus only on our SQAPlanner potentially reverse the predictions of the same instance
+approach. Figure 12 presents an approach to evaluate in the subsequent release (k + 1) from having defects to
+the applicability of the hypothetical contradicting rules. clean.
+We analyze the applicability of the hypothetical contra- For 67%-81% of the instances in the subsequent
+dicting rules along 2 perspectives: releases, our hypothetical contradicting rules are cor-
+
+rectly non-applicable when the prediction of rules does
+RQ5-a: Are hypothetical contradicting rules applied not change. Figure 13 shows there are 67%, 81% and
+
+when the prediction of an instance changes from defec- 71% of the instances in the subsequent releases that our
+tive in a testing release k to clean in a validation release SQAPlanner’s hypothetical contradicting rules do not fol-
+k+1? Hypothetical contradicting rules are considered as low the actual feature values in the validation data when
+applicable if such rules follow the actual feature values the prediction of rules does not change with respect
+in the validation data when the prediction of the instance to coverage, confidence, and lift, respectively. In other
+changes from defective in k to clean in k+1. For example, words, when files are still defective in the subsequent
+A.java is predicted to be defective in the testing data (k) release, our hypothetical contradicting rules are still
+but predicted to be clean in the validation data (k+1). We largely in agreement (i.e., our hypothetical contradicting
+consider that the generated hypothetical contradicting rules are correctly non-applicable).
+rules (e.g., {LOC < 900} associate
+
+=====⇒ CLEAN) is correct if
+such rule is in accordance with the actual feature values
+in the validation data (i.e., LOC = 850). Like in this 6.4 Discussion & Qualitative Analysis
+example, the hypothetical contradicting rule suggests We conducted a qualitative analysis to illustrate the
+developers reduce the lines of code to less than 900 to effectiveness of our guidance generated by our SQAPlan-
+potentially reverse the decision of the defect models from ner. We selected the ErrorHandlerBuilderRef.java of the
+defective to clean, which is consistent with the validation release 2.9.0 of the Camel software system as the subject
+data (LOC = 850). of this qualitative analysis. Our SQAPlanner approach
+
+
+
+17
+
+RQ5-a measures the number of instances where the hypothetical contradicting rule follows the actual  
+feature values in the validation data when the prediction is changed (i.e., Bug in k but Clean in k+1) 
+e.g., RH−
+
+A.java : LOC < 900 ⇒ Clean  is in accordance with the validation data (i.e., LOC=850)
+
+LOC Actual Predict Counterfactual Rules LOC Actual Predict
+
+A.java 1,000 Bug Bug RH−
+A.java : LOC < 900 ⇒ Clean A.java 850 Clean Clean
+
+Past Release Target Release  B.java 1,200 Bug Bug RH−
+B.java : LOC < 1,100 ⇒ Clean Validation Release B.java 1,500 Bug Bug
+
+(k-1) (k) (k+1)
+
+Testing Predictions Rules
+Training
+
+RQ5-b measures the number of instances where the hypothetical contradicting  
+rule does not follow the actual feature values in the validation data  
+
+Defect Models Our SQA Planner when the prediction is not changed (i.e., Bug in k and Bug in k+1) 
+e.g., RH−
+
+B.java : LOC < 1,100 ⇒ Clean is in accordance with the validation data
+
+Fig. 12: (RQ5) An approach to evaluate the applicability of the hypothetical contradicting rules.
+
+and a line-based ownership score of less than 85%.
+Coverage Confidence Lift When comparing this to the actual feature values of
+
+100 the file {LOCDeclaration = 34, DistinctDeveloper = 3,
+80 Ownership = 0.65}, we find that the conditions of this
+
+supporting rule are consistent with the actual feature
+60 values and the consequent is consistent with our SQA-
+
+● Planner’s prediction (i.e., defective).
+40
+
+●
+
+What are the non-risky practices that lead a model to
+20
+
+predict a file as clean?
+0 To answer this question, we use our contradicting rule
+
+RQ5−a RQ5−b RQ5−a RQ5−b RQ5−a RQ5−b to generate guidance (G2) for this file as follows:
+Analysis
+
+Fig. 13: The percentage of of the instances in the sub- <− = {0.440 <= RatioCommentToCode <= 0.960}
+sequent releases where our hypothetical contradicting associate
+
+=====⇒ CLEAN
+rules (RQ5-a) follow the actual feature values in the val-
+idation data when the decision is changed and (RQ5-b) Implication. We find that our contradicting rule is
+do not follow the actual feature values in the validation consistent with the actual feature values of the file to
+data when the decision is not changed for each measure. be explained. The actual feature values of this file is
+
+{RatioCommentToCode = 0.51}, meaning that 51% of
+the total lines of code are comment lines (i.e., #com-
+
+correctly predicts this file as defective with a probability ments/#LOC). The contradicting rule (<−) indicates that
+score of 70%. Below, we discuss the implications of our the condition that supports its prediction as not being
+rule-based explanations to guide developers on what defective is {0.440 <= RatioCommentToCode <= 0.960},
+they could follow and could avoid to decrease the risk indicating that files that have a RatioCommentToCode
+of having defects. of more than 44% but less than 96% are likely not
+
+to be defective. Developers should thus adhere to the
+What are risky practices that lead a model to predict a file contradicting rule i.e., having the comment ratio for
+as defective? more than 44% of the file, to not increase the risk of
+To answer this question, we use the supporting rule to having defects.
+generate guidance (G1) for this file as follows:
+
+What are practices to avoid to not increase the risk of
+having defects?
+
+<+ = {LOCDeclaration > 28.150 & To answer this question, we use our hypothetical sup-
+DistinctDeveloper > 1.68 & porting rule to generate guidance (G3) for this file as
+
+follows:
+Ownership < 0.85} associate
+
+=====⇒ DEFECT
+
+Implication. This supporting rule indicates that this
+file is being predicted as defective since it is associated <H+ = {MinorCommit > 0.000} associate
+
+=====⇒ DEFECT
+
+with the conditions of having more than 28 lines of Implication. Having more than zero minor developers
+declarative code, more than 1.68 distinct developers, will increase the risk of having defects. The actual feature
+
+Percentage
+
+Compare
+
+
+
+18
+
+value of this file is {MinorCommit = 0}, meaning that and (3) its threshold and range values for practitioners to
+this file has no minor developers (i.e., minor) who edit follow to mitigate the risk of having defects. The green
+or change the file. This finding is consistent with Bird et shades indicate the non-risky range values of features,
+al. [2] and Rahman [34] who found that minor devel- while the red shades indicate the risky range values
+opers often introduce defects. Thus, developers should of features. The vertical bars indicate the actual values
+adhere to the hypothetical supporting rule in order not of features for a given file. The green arrows provide
+to increase the risk of having defects. directions of how a feature should be changed (i.e.,
+
+increase or decrease). The list of guidance is structured
+What are the practices to follow to decrease the risk of into two parts: (1) what to do to decrease the risk of
+having defects? being defective; and (2) what to avoid to not increase the
+To answer this question, we use our hypothetical con- risk of being defective. For each guidance, we translate
+tradicting rule to generate guidance (G4) for this file as a rule-based explanation into an actionable guidance. A
+follows: guidance is presented in the form of natural language
+
+to ensure that it is actionable and understandable by
+<H− = { practitioners.
+
+LOCBlank < 7.62 & To translate the rule-based explanations into actual
+OutputMean < 1.98} associate
+
+=====⇒ CLEAN guidance, we focus on only the ErrorHandlerBuilder-
+Ref.java of the release 2.9.0 of the Camel software system.
+
+Implication. If developers changed the file to have less We use the rule-based explanations from Section 6.4 as
+than 8 blank lines and less than 2 output variables, a reference. Finally, we derive the following statements
+this could reverse the prediction of having defects to according to the reference rule-based explanations in
+being clean. The actual feature values of this file are Section 6.4:
+{LOCBlank = 19,OutputMean = 3.72}, meaning that
+this file has 19 blank lines and an average of 3.7 output • (S1) Decreasing the number of class and method
+variables (i.e., fan-out) of functions in a file. The hypo- declaration lines to less than 29 lines to decrease
+thetical contradicting rule indicates that if {LOCBlank < the risk of being defective.
+7.62 & OutputMean < 1.98} then the file is likely • (S2) Decreasing the number of distinct developers to
+to reverse the prediction of having defects to being less than 2 developers to decrease the risk of being
+clean. Thus, our hypothetical contradicting rule provides defective.
+suggestions to the developers of what they should do to • (S3) Increasing the ownership code proportion to
+decrease the risk of having defects. It should be noted more than 0.85 to decrease the risk of being defec-
+that our contradicting rule shows correlations that may tive.
+not necessarily be causal. • (S4) Avoid decreasing the comment to code ratio
+
+to less than 0.44 to not increase the risk of being
+defective.
+
+7 PRACTITIONERS’ PERCEPTIONS OF OUR • (S5) Avoid increasing the number of minor devel-
+SQAPLANNER VISUALIZATION opers to more than 0 developers to not increase the
+In this section, we aim to investigate the practitioners’ risk of being defective.
+perceptions of the visualization of SQAPlanner when • (S6) Decreasing the number of blank lines to less
+comparing to the visualization of the state-of-the-art than 8 lines to decrease the risky of being defective.
+(RQ6) and the actual guidance generated by SQAPlanner • (S7) Decreasing the number of output variables to
+(RQ7). Below, we describe the approach and present the less than 2 variables to decrease the risk of being
+results. defective.
+
+To implement the visualization of our SQAPlanner
+7.1 Approach approach, we decided to use the Microsoft’s Code Defect
+
+AI as our core infrastructure. We first downloaded the
+To address RQs 6 and 7, we developed a proof-of- repository of Code Defect AI from GitHub.6 Then, we
+concept to visualize the actionable guidance generated carefully studied their repository and deployed Code
+by our SQAPlanner. Traditionally, the importance scores Defect AI in our local environment with continuous sup-
+of Random Forests or LIME’s model-agnostic techniques port from the core developer of Code Defect AI. Then,
+are commonly presented using a bar chart. However, we integrated our SQAPlanner approach and replaced
+such bar charts can only indicate the importance scores, their visualization (bar plots) with our visualization
+without providing guidance on what to do and what not generated by SQAPlanner using the implementation of
+to do. bullet plots as provided by the d3.js Javascript library.7
+
+To address this challenge, we propose to use a bullet To investigate the practitioners’ perceptions of our
+plot (see Figure 14). The visualization of our SQAPlanner SQAPlanner visualization, we used a qualitative survey
+is designed to provide the following key information:
+(1) the list of guidance that practitioners should follow 6. https://github.com/aricent/codedefectai
+and should avoid; (2) the actual feature value of that file; 7. https://bl.ocks.org/mbostock/4061961
+
+
+
+OK
+
+OK
+
+19
+
+Project Name : Apache Camel (Release 2.9.0)
+PFirloej Necatm Nea m    e    ::  EArpraocrHhea nCdalmereBl u(RiledleeraRseef .2ja.9v.a0)
+FCoimlem itN IDa: 0ma02edd 5  f5  8 a 7 :7 2E82rdrdo18rf6H46a8dn7fad6dl5ecr50Bceu32i6ld CeomrRmiet Dfa.tjea: 2v01a9-08-15| 08:09:14 PM
+
+Commit ID: 0a02dd5f58a77282dd18f6468d7fa6d5c50ce326  Commit Date: 2019-08-15| 08:09:14 PM File History
+
+File History
+
+Bug Risk Prediction: Yes Risk Score: 70%
+
+Bug Risk Prediction: Yes Risk Score: 70%
+
+What to do to decrease the risk of having defects?
+What to do to decrease the risk of having defects?
+
+Decreasing the number of class and method declaration lines to less than 29 lines
+Actual = 34 lines
+
+0 5 10 15 20 25 30 35 40 45 50
+Decreasing the number of class and method declaration lines to less than 29 lines
+
+Decreasing the number of distinct developers to less than 2 Adcetuvael =l o34p leinress
+Actual = 3 developers 0 5 10 15 20 25 30 35 40 45 50
+
+0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0
+Decreasing the number of distinct developers to less than 2 developers
+
+Increasing the ownership code proportion to Amctouarle =  t3h daevne l0op.8er5s
+Actual = 0.650.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0
+
+0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+Increasing the ownership code proportion to more than 0.85
+
+Decreasing the number of blank lines to less thaAnct u8a ll =in 0e.6s5
+Actual = 19 blank lines0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+
+0 5 10 15 20 25 30
+Decreasing the number of blank lines to less than 8 lines
+
+Decreasing the number of output variables to less tAhctauanl  =2 1 v9 ablrainakb lilneess
+Actual = 4 variables 0 5 10 15 20 25 30
+
+0 1 2 3 4 5 6 7 8 9 10
+Decreasing the number of output variables to less than 2 variables
+
+Actual = 4 variables
+0 1 2 3 4 5 6 7 8 9 10
+
+What to avoid to not increase the risk of having defects?
+What to avoid to not increase the risk of having defects?
+
+Avoid decreasing the comment to code ratio to less than 0.44
+Actual = 0.51
+
+0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+Avoid decreasing the comment to code ratio to less than 0.44
+
+Avoid increasing the number of minor developers to more than 0 deAvcetulaol p= e0.r5s1
+Actual = 0 minor developers0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+
+0 1 2 3 4 5 6 7 8 9 10
+Avoid increasing the number of minor developers to more than 0 developers  
+
+Actual = 0 minor developers
+* In the bullet plots, the red shade indicates the range of values that are high0  risk o1f bein2g defe3ctive, w4 hile t5he gre6en sha7de ind8 icates9 the ra10nge of
+values that are low risk of defective. The bold vertical line indicates the actual values for each feature of this file.  
+* In the bullet plots, the red shade indicates the range of values that are high risk of being defective, while the green shade indicates the range of
+values that are low risk of defective. The bold vertical line indicates the actual values for each feature of this file.
+
+Fig. 14: The visualization of our SQAPlanner is designed to provide the following key information: (1) the list of
+guidance that practitioners should follow and should avoid; (2) the actual feature value of that file; and (3) its
+threshold and range values for practitioners to follow to mitigate the risk of having defects.
+
+as a research method. We also used the visualization of visualization of Microsoft’s Code Defect AI. We asked
+Microsoft’s Code Defect AI (see Figure 2) as a baseline the participants a closed-ended question to inquire about
+comparison. The objectives of the survey are as follows: which of the visualization is the best to provide action-
+(1) to investigate the practitioners’ perceptions of the able guidance on how to mitigate the risk of having
+visualization of our SQAPlanner; and (2) to investigate defects. We also asked the participants an open-ended
+the practitioners’ perceptions of the actionable guidance question to inquire about their rationale on why the
+generated by our SQAPlanner. Similar to Section 4, we selected visualization is preferred over another visual-
+designed the survey as a cross-sectional study where ization.
+participants provide their responses at one fixed point Part 2—Practitioners’ perceptions of the actual guidance
+in time. The design of our survey is described below. generated by SQAPlanner: We again presented the vi-
+
+Part 1—Practitioners’ perceptions of the visualizations of sualization of SQAPlanner. Then, for each statement,
+our SQAPlanner: We first provided the concept of defect we asked the participants a closed-ended question to
+prediction models and described how our SQAPlan- inquire whether the participants agree for each of the
+ner can be used to support SQA planning. Then, we seven statements that we translated from the rule-based
+presented the visualization of our SQAPlanner and the explanations.
+
+
+
+20
+
+100
+S1 10% 90%
+
+80%
+75 S7 17% 83%
+
+50 S5 20% 80%
+
+25 S4 27% 73%
+20%
+
+S2 27% 73%
+0
+
+S6 33% 67%
+
+S3 37% 63%
+
+100 50 0 50 100
+Percentage
+
+Response Disagree Agree
+
+(a) Perceptions of visual- (b) Perceptions of the actual guidance generated by our SQAPlanner.
+ization.
+
+Fig. 15: (RQ6,RQ7) The results of a qualitative survey with practitioners.
+
+We used an online questionnaire service as provided visualization of Microsoft’s Code Defect AI is presented
+by Google Forms. We carefully evaluated the survey via in a more simple and concise manner (i.e., only present
+pre-testing [29] to assess the reliability and validity of the most important factors that are associated with the
+the survey. The survey has been rigorously reviewed risk of having defects). Thus, future research should
+and approved by the Monash University Human Re- take into consideration the complexity of the provided
+search Ethics Committee (MUHREC Project ID: 27209). information when designing a novel visualization for AI-
+We used a recruiting service provided by the MTurk to driven defect prediction.
+recruit participants. We received 240 closed-ended and
+30 open-ended responses from 30 respondents. Finally, (RQ7) How do practitioners perceive the actual guid-
+we manually verified and analyzed the survey responses ance generated by our SQAPlanner?
+to ensure that the responses are of high quality. Results. 63%-90% of the respondents agree with the
+
+seven statements derived from the actual guidance gen-
+7.2 Results erated by our SQAPlanner. Figure 15b presents that the
+
+percentage of the respondents who agree with the seven
+(RQ6) How do practitioners perceive the visualization statements derived from the actual guidance generated
+of SQAPlanner when comparing to the visualization by our SQAPlanner. We find that 90% of the respondents
+of the state-of-the-art? agree the most with (S1) Decreasing the number of class and
+Results. 80% of our respondents agree that the visu- method declaration lines to less than 29 lines to decrease the
+alization of our SQAPlanner is better for providing risk of being defective.
+actionable guidance when compared to the visualiza- On the other hand, only 63% of the respondents agree
+tion of Microsoft’s Code Defect AI. Figure 15a shows with (S3) Increasing the ownership code proportion to more
+the percentage of the respondents who select which than 0.85 to decrease the risk of being defective. We suspect
+visualization is best to provide actionable guidance on that the wide range of agreement rates for our state-
+how to mitigate the risk of having defects. ments has to do with the degree of understandability of
+
+After analyzing the open-end responses, practitioners the software metrics, since practitioners may find that
+(e.g., R10 and R12) provided rationales that the sug- the number of class and method declaration lines for
+gested threshold values of each factor and directional S1 is more intuitive and easy to understand than the
+arrows provided by SQAPlanner make the visualization ownership code proportion for S3. Thus, future research
+more clear on what developers should do and should should take into consideration the degree of understand-
+avoid to decrease the risk of having defects. Respondents ability of the software metrics when designing a novel
+(e.g., R19, R20, and R23) also pointed out that the visualization for AI-driven defect prediction.
+summary of "What to do" and "What to avoid" is straight
+to the point and helpful. 8 THREATS TO VALIDITY
+
+On the other hand, 20% of the respondents rate the Construct Validity. Many local model-agnostic tech-
+visualization of Microsoft’s Code Defect AI as better. Re- niques could be used to generate many forms of explana-
+spondents (e.g., R5 and R16) provided rationales that the tions e.g., feature importance and rules. In this paper, we
+
+Percentage
+
+SQAPlanner
+
+Baseline
+(Code Defect AI)
+
+
+
+21
+
+focused only on rule-based explanations by comparing SQA planning involves various activities. However,
+with LORE and Anchor, an extension of LIME. We also this paper only focused on helping practitioners to
+studied only a limited number of available classification define development policies and their associated risk
+techniques. Thus, our results may not be applicable or thresholds [12], without considering other activities. In
+generalise to the use of other techniques. Nonetheless, addition, the dependent variable that we used in this
+other classification techniques can be explored in future study only focused on software quality (i.e., defective or
+work to see if they improve on our results. clean), without considering other aspects (e.g., testability,
+
+There may be possible interpretation of causal rela- reusability, robustness, and maintainability). Thus, other
+tionship in our survey design. Thus, we attempted to SQA planning activities and other quality attributes can
+mitigate the negative effect caused by possible inter- be explored in future work.
+pretation of causal relationship in the survey design
+as much as possible. For example, we use the term
+"decrease/increase the risk of having defects", rather 9 RELATED WORK
+than "fixing the actual defects of that file". We use the 9.1 Explainable AI in Software Engineering
+term "guidance" rather than "solutions", as these rule- Despite the advances of AI/ML techniques that are
+based explanations are not the actual solutions to fix tightly integrated into software development practices
+the actual defects of that file. Nevertheless, there may (e.g., defect prediction [17], automated code review [1,
+be other possible confounding factors that may cause 52], automated code completion [19, 20]), such AI/ML
+interpretation of causal relationship. Thus, future studies techniques come with their own limitations. The central
+should explore further. problem of AI/ML techniques is that most AI/ML mod-
+
+In addition, we do not seek to claim the generaliza- els are considered black-box models i.e., we understand
+tion and causation of the guidance generated by our the underlying mathematical principles without explicit
+approach. Instead, the key message of our study is that declarative knowledge representation. In other words,
+our rule-based guidance can explain the behaviour of developers do not understand how decisions are made
+the defect prediction models. Thus, they only indicate by such AI/ML techniques. In addition, the current de-
+important relationships in the data and provide a useful fect modelling practices do not uphold the current data
+tool to support decision- and policy-making in SQA privacy laws and regulations, which require justifications
+planning activities. of individual predictions for any decisions made by
+Internal Validity. The practicality of rule-based expla- an AI/ML model. Therefore, applying such black-box
+nations heavily relies on software metrics that are used AI/ML techniques in the software development prac-
+to train the models. In this paper, we chose to generate tices for safety-critical and cyber-physical systems [4, 57]
+rules based on 65 well-known and hand-crafted software which involve safety, security, business, personal, or mil-
+metrics, rather than using advanced automated feature itary operations is unfavourable and must be avoided.
+generation like deep learning. Future work may focus on Explainable AI is essential in software engineering to
+trying to explain other machine learning-based models, building appropriate trust (including Fairness, Account-
+such as explaining deep learning models used in an SQA ability, and Transparency (FAT)). Developers can then (1)
+context. understand the reasons and the logic behind every de-
+
+The goal of our SQAPlanner (aka. the local rule-based cision and (2) effectively improve the prediction models
+model-agnostic technique) is a post-hoc analysis of the by understanding any unsound predictions made by the
+global defect prediction models. That means, SQAPlan- models. Recently, explainable AI has been employed in
+ner can only explain the behavior of the (global) defect software engineering [22, 46], by making defect predic-
+prediction models, regardless of the correct or incor- tion models more practical [33, 54] (i.e., using LIME to
+rect predictions. If the predictions of the global defect explain which tokens and which lines are likely to be
+models for the testing dataset are incorrect, SQAPlanner defective in the future) and explainable [21] (i.e, using
+will explain why the global defect prediction models LIME to explain a prediction why a file is predicted as
+generate wrong predictions in the form of rule-based defective). However, there exists no studies that able to
+explanations. Therefore, the robustness or the sensitivity provide concrete guidance on what developers should
+of our SQAPlanner does not depend on the accuracy of do or should not do to support SQA planning. To the
+the predictions of the global defect prediction models. best of our knowledge, this paper is the first to generate
+External Validity. We applied our SQA Planner ap- local rule-based explanations to help QA teams make
+proach to a limited number of software systems. Thus, data-informed decisions in software quality assurance
+our results may not generalize to other datasets, do- planning.
+mains, ecosystems. However, we mitigated this by
+choosing a range of different non-trivial, real-world,
+open-source software applications. Nonetheless, addi- 9.2 Towards Explainable and Actionable Analytics
+tional replication studies in a proprietary setting and for Software Defects
+other ecosystems will prove useful to compare to our There are two key approaches for achieving explainabil-
+results reported here. ity in defect prediction models. The first is to make the
+
+
+
+22
+
+entire decision process transparent and comprehensible teams make data-informed decisions in software quality
+(i.e., global explainability). The second is to explicitly assurance planning.
+provide an explanation for each individual prediction
+(i.e., local explainability). 10 CONCLUSIONS
+
+Examples of global explainability methods are re-
+gression models [35, 37], decision trees [59], decision Defect prediction models have been proposed to gen-
+rules [41], and Fast-and-Frugal trees [6]. These trans- erate insights (e.g., the most important factors that are
+parent AI/ML techniques often provide built-in model associated with software quality). However, such in-
+interpretation techniques to uncover the relationships sights derived from traditional defect models are far
+between the studied features and defect-proneness. For from actionable—i.e., practitioners still do not know
+example, an ANOVA analysis provided for logistic re- what they should do and should avoid to decrease the
+gression or a variable importance analysis provided for risk of having defects, and what is a risk threshold for
+random forest. However, the insights derived from these each metric. A lack of actionable guidance and its risk
+transparent AI/ML techniques do not provide justifica- threshold could lead to inefficient and ineffective SQA
+tions for each individual prediction. planning processes.
+
+Model-agnostic techniques are techniques for explic- In this paper, we investigate practitioners perceptions
+itly providing an instance explanation for each decision and their challenges of current SQA planning activities
+of AI/ML models (i.e., local explainability) for a given and the perceptions of our proposed four types of guid-
+testing instance [16]. Formally, given a defect model ance. Then, we propose and evaluate our SQAPlanner
+
+f
+and an instance x, the instance explanation problem approach—i.e., an approach for generating four types of
+aims to provide an explanation e for the prediction guidance and its risk threshold in the form of rule-based
+f(x) = y. To do so, we address the problem by building explanation for the predictions of defect prediction mod-
+a local interpretable model f ′ that mimics the local els. Finally, we develop and evaluate the visualization of
+behaviour of the global defect model f . An explanation our SQAPlanner approach.
+of the prediction is then derived from the local inter- Through the use of qualitative survey and empirical
+pretable model f ′. The local interpretable model focuses evaluation, our results lead us to conclude that SQA-
+on learning the behaviour of the defect models in the Planner is needed, important, effective, stable, and ap-
+neighbourhood of the specific instance x, without aiming plicable. We also find that 80% of respondents perceived
+at providing a single description of the logic of the that our visualization is more actionable. Thus, our
+black box for all possible instances. Thus, an explanation SQAPlanner paves a way for novel research in actionable
+e ∈ E is obtained through f ′, if e = ε(f ′, x) for some software analytics.
+explanation logic ε(., .) which reasons over f ′ and Acknowledgments. C. Tantithamthavorn was par-
+
+x.
+Two common ways to represent explanations are feature- tially supported by the Australian Research Council’s
+importance explanations and rule-based explanations. Discovery Early Career Researcher Award (ARC DE-
+Unlike model-specific explanation techniques discussed CRA) funding scheme (DE200100941). C. Bergmeir was
+above, the great advantage of model-agnostic techniques partially supported by the Australian Research Coun-
+is their flexibility. Such model-agnostic techniques can cil’s Discovery Early Career Researcher Award (ARC
+(1) interpret any learning algorithms (e.g., regression, DECRA) funding scheme (DE190100045). J. Grundy was
+random forest, and neural networks); (2) are not limited partially supported by the Australian Research Council’s
+to a certain form of explanations (e.g., feature importance Laureate Fellowship funding scheme (FL190100035).
+or rules); and (3) are able to process any input data (e.g.,
+features, words, and images [38]). REFERENCES
+
+There are a plethora of model-agnostic techniques [16] [1] S. Asthana, R. Kumar, R. Bhagwan, C. Bird, C. Bansal, C. Maddila,
+for identifying the most important feature at the instance S. Mehta, and B. Ashok, “Whodo: automating reviewer sugges-
+
+tions at scale,” in Proceedings of the 2019 27th ACM Joint Meeting
+level. For example, LIME (i.e., Local Interpretable Model- on European Software Engineering Conference and Symposium on the
+agnostic Explanations) [39] is a model-agnostic technique Foundations of Software Engineering. ACM, 2019, pp. 937–945.
+that mimics the behaviour of the black-box model with [2] C. Bird, B. Murphy, and H. Gall, “Don’t Touch My Code !
+a local linear model to generate the explanations of Examining the Effects of Ownership on Software Quality,” in
+
+Proceedings of the European Conference on Foundations of Software
+the predictions. BreakDown [14, 43] is a model-agnostic Engineering (ESEC/FSE), 2011, pp. 4–14.
+technique that uses the greedy strategy to sequentially [3] B. Boehm and V. R. Basili, “Software defect reduction top 10 list,”
+measure contributions of metrics towards the expected Foundations of empirical software engineering: the legacy of Victor R.
+prediction. However, none of these techniques can gen- Basili, vol. 426, no. 37, pp. 426–431, 2005.
+
+erate explanations with the logic behind. [4] M. Borg, S. Gerasimou, N. Hochgeschwender, and N. Khakpour,
+“Explainability for safety and security,” Explainable Software for
+
+Despite the advances of model-agnostic techniques in Cyber-Physical Systems (ES4CPS), Report from the GI Dagstuhl Sem-
+the Explainable AI communities, such techniques have inar 19023, p. 15, 2019.
+not been employed in practical software engineering [5] L. Breiman, A. Cutler, A. Liaw, and M. Wiener, “randomForest
+
+contexts. To the best of our knowledge, this paper is the : Breiman and Cutler’s Random Forests for Classification and
+Regression. R package version 4.6-12.” Software available at URL:
+
+first to generate local rule-based explanations to help QA https://cran.r-project.org/package=randomForest.
+
+
+
+23
+
+[6] D. Chen, W. Fu, R. Krishna, and T. Menzies, “Applications of man: Automatically Mitigating Correlated Software Metrics for
+Psychological Science for Actionable Analytics,” in Proceedings of Interpreting Defect Models,” in Proceedings of the International
+the 2018 26th ACM Joint Meeting on European Software Engineering Conference on Software Maintenance and Evolution (ICSME), 2018,
+Conference and Symposium on the Foundations of Software Engineer- pp. 92–103.
+ing. ACM, 2018, pp. 456–467. [25] B. A. Kitchenham and S. L. Pfleeger, “Personal opinion surveys,”
+
+[7] C. Y. Chong, P. Thongtanunam, and C. Tantithamthavorn, “As- in Guide to Advanced Empirical Software Engineering. Springer,
+sessing the students understanding and their mistakes in code re- 2008, pp. 63–92.
+view checklists–an experience report of 1,791 code review check- [26] L. Kocsis and C. Szepesvári, “Bandit based monte-carlo plan-
+lists from 394 students,” in International Conference on Software ning,” in European conference on machine learning. Springer, 2006,
+Engineering: Joint Software Engineering Education and Training track pp. 282–293.
+(ICSE-JSEET), 2021.
+
+[27] J. A. Krosnick, “Survey research,” Annual Review of Psychology,
+[8] D. A. da Costa, S. McIntosh, W. Shang, U. Kulesza, R. Coelho, and vol. 50, no. 1, pp. 537–567, 1999.
+
+A. E. Hassan, “A Framework for Evaluating the Results of the SZZ
+Approach for Identifying Bug-introducing Changes,” Transactions [28] S. Kumaresh and R. Baskaran, “Defect analysis and prevention
+on Software Engineering (TSE), vol. 43, no. 7, pp. 641–657, 2017. for software process quality improvement,” International Journal
+
+of Computer Applications, vol. 8, no. 7, pp. 42–47, 2010.
+[9] M. D’Ambros, M. Lanza, and R. Robbes, “An Extensive Compar-
+
+ison of Bug Prediction Approaches,” in Proceedings of the Interna- [29] M. S. Litwin, How to Measure Survey Reliability and Validity. Sage,
+tional Conference on Mining Software Repositories (MSR), 2010, pp. 1995, vol. 7.
+31–41. [30] B. R. Maxim and M. Kessentini, “An introduction to modern soft-
+
+[10] P. Edwards, I. Roberts, M. Clarke, C. DiGuiseppi, S. Pratap, ware quality assurance,” in Software Quality Assurance. Elsevier,
+R. Wentz, and I. Kwan, “"increasing response rates to postal 2016, pp. 19–46.
+questionnaires: Systematic review",” Bmj, vol. 324, no. 7347, p. [31] S. McIntosh, Y. Kamei, B. Adams, and A. E. Hassan, “The Impact
+1183, 2002. of Code Review Coverage and Code Review Participation on
+
+[11] S. Farooqui and W. Mahmood, “A survey of pakistan’s sqa Software Quality,” in Proceedings of the International Conference on
+practices: A comparative study,” in 29th International Business Mining Software Repositories (MSR), 2014, pp. 192–201.
+Information Management Association Conference, 2017. [32] T. Menzies, J. Greenwald, and A. Frank, “Data Mining Static Code
+
+[12] D. Galin, Software quality: concepts and practice. John Wiley & Attributes to Learn Defect Predictors,” Transactions on Software
+Sons, 2018. Engineering (TSE), vol. 33, no. 1, pp. 2–13, 2007.
+
+[13] B. Ghotra, S. McIntosh, and A. E. Hassan, “Revisiting the Impact [33] C. Pornprasit and C. Tantithamthavorn, “JITLine: A Simpler,
+of Classification Techniques on the Performance of Defect Pre- Better, Faster, Finer-grained Just-In-Time Defect Prediction,” in
+diction Models,” in Proceedings of the International Conference on Proceedings of the International Conference on Mining Software Repos-
+Software Engineering (ICSE), 2015, pp. 789–800. itories (MSR), 2021, p. To Appear.
+
+[14] A. Gosiewska and P. Biecek, “iBreakDown: Uncertainty of Model [34] F. Rahman and P. Devanbu, “Ownership, experience and defects:
+Explanations for Non-additive Predictive Models,” arXiv preprint a fine-grained study of authorship,” in Proceedings of the Interna-
+arXiv:1903.11420, 2019. tional Conference on Software Engineering (ICSE), 2011, pp. 491–500.
+
+[15] R. Guidotti, A. Monreale, S. Ruggieri, D. Pedreschi, F. Turini, and [35] ——, “How, and Why, Process Metrics are Better,” in Proceedings
+F. Giannotti, “Local rule-based explanations of black box decision of the International Conference on Software Engineering (ICSE), 2013,
+systems,” arXiv preprint arXiv:1805.10820, 2018. pp. 432–441.
+
+[16] R. Guidotti, A. Monreale, S. Ruggieri, F. Turini, D. Pedreschi, [36] D. Rajapaksha, C. Bergmeir, and W. Buntine, “LoRMIkA: Local
+and F. Giannotti, “A Survey Of Methods For Explaining Black rule-based model interpretability with k-optimal associations,”
+Box Models,” vol. 51, no. 5, pp. 1–45, 2018. [Online]. Available: Information Sciences, vol. 540, pp. 221–241, 2020.
+http://arxiv.org/abs/1802.01933 [37] G. K. Rajbahadur, S. Wang, Y. Kamei, and A. E. Hassan, “The
+
+[17] T. Hall, S. Beecham, D. Bowes, D. Gray, and S. Counsell, Impact of Using Regression Models to Build Defect Classifiers,”
+“A Systematic Literature Review on Fault Prediction in Proceedings of the International Conference on Mining Software
+Performance in Software Engineering,” Transactions on Software Repositories (MSR), 2017, pp. 135–145.
+Engineering (TSE), vol. 38, no. 6, pp. 1276–1304, 2012. [38] M. T. Ribeiro, S. Singh, and C. Guestrin, “Model-agnostic Inter-
+[Online]. Available: http://ieeexplore.ieee.org.pc124152.oulu.fi: pretability of Machine Learning,” arXiv preprint arXiv:1606.05386,
+8080/xpls/abs{_}all.jsp?arnumber=6035727 2016.
+
+[18] J. A. Hanley and B. J. McNeil, “The meaning and use of the area [39] ——, “Why should I trust you?: Explaining the Predictions of
+under a receiver operating characteristic (ROC) curve,” Radiology, Any Classifier,” in Proceedings of the International Conference on
+vol. 143, no. 1, pp. 29–36, Apr. 1982. [Online]. Available: Knowledge Discovery and Data Mining (KDDM), 2016, pp. 1135–
+http://dx.doi.org/10.1148/radiology.143.1.7063747 1144.
+
+[19] V. J. Hellendoorn, C. Bird, E. T. Barr, and M. Allamanis, “Deep [40] ——, “Anchors: High-precision model-agnostic explanations,” in
+learning type inference,” in Proceedings of the 2018 26th ACM Joint Thirty-Second AAAI Conference on Artificial Intelligence, 2018.
+Meeting on European Software Engineering Conference and Symposium [41] D. Rodríguez, R. Ruiz, J. C. Riquelme, and J. S. Aguilar-Ruiz,
+on the Foundations of Software Engineering. ACM, 2018, pp. 152– “Searching for Rules to Detect Defective Modules: A Subgroup
+162. Discovery Approach,” Information Sciences, vol. 191, pp. 14–30,
+
+[20] V. J. Hellendoorn, S. Proksch, H. C. Gall, and A. Bacchelli, “When 2012.
+code completion fails: a case study on real-world completions,” [42] E. Smith, R. Loftin, E. Murphy-Hill, C. Bird, and T. Zimmermann,
+in Proceedings of the 41st International Conference on Software Engi- “"improving developer participation rates in surveys",” in Proceed-
+neering. IEEE Press, 2019, pp. 960–970. ings of the International Workshop on Cooperative and Human Aspects
+
+[21] J. Jiarpakdee, C. Tantithamthavorn, H. K. Dam, and J. Grundy, of Software Engineering (CHASE), 2013, pp. 89–92.
+“An empirical study of model-agnostics techniques for defect [43] M. Staniak and P. Biecek, “Explanations of Model Predictions with
+prediction models,” 2020. live and breakDown Packages,” arXiv preprint arXiv:1804.01955,
+
+[22] J. Jiarpakdee, C. Tantithamthavorn, and J. Grundy, “Practitioners’ 2018.
+Perceptions of the Goals and Visual Explanations of Defect Pre- [44] R. Storn and K. Price, “Differential evolution – a simple
+diction Models,” in Proceedings of the International Conference on and efficient heuristic for global optimization over continuous
+Mining Software Repositories (MSR), 2021, p. To Appear. spaces,” Journal of Global Optimization, vol. 11, no. 4, pp. 341–
+
+[23] J. Jiarpakdee, C. Tantithamthavorn, and A. E. Hassan, “The 359, Dec. 1997. [Online]. Available: https://doi.org/10.1023/A:
+Impact of Correlated Metrics on Defect Models,” Transactions on 1008202821328
+Software Engineering (TSE), p. To Appear, 2019. [45] C. Tantithamthavorn, A. E. Hassan, and K. Matsumoto, “The
+
+[24] J. Jiarpakdee, C. Tantithamthavorn, and C. Treude, “AutoSpear- Impact of Class Rebalancing Techniques on The Performance
+
+
+
+24
+
+and Interpretation of Defect Prediction Models,” Transactions on Jirayus Jiarpakdee is a Ph.D. candidate at
+Software Engineering (TSE), p. To Appear, 2019. Monash University, Australia. His research inter-
+
+[46] C. Tantithamthavorn, J. Jiarpakdee, and J. Grundy, “Explainable ests include empirical software engineering and
+ai for software engineering,” arXiv preprint arXiv:2012.01614, 2020. mining software repositories (MSR). The goal of
+
+his Ph.D. is to apply the knowledge of statistical
+[47] C. Tantithamthavorn, S. McIntosh, A. E. Hassan, A. Ihara, and modelling, experimental design, and software
+
+K. Matsumoto, “The Impact of Mislabelling on the Performance engineering to improve the explainability of de-
+and Interpretation of Defect Prediction Models,” in Proceeding of fect prediction models.
+the International Conference on Software Engineering (ICSE), 2015,
+pp. 812–823.
+
+[48] C. Tantithamthavorn, S. McIntosh, A. E. Hassan, and K. Mat-
+sumoto, “Automated Parameter Optimization of Classification
+Techniques for Defect Prediction Models,” in Proceedings of the
+International Conference on Software Engineering (ICSE), 2016, pp.
+321–332.
+
+[49] ——, “An Empirical Comparison of Model Validation Techniques
+for Defect Prediction Models,” Transactions on Software Engineering
+(TSE), vol. 43, no. 1, pp. 1–18, 2017.
+
+[50] ——, “The Impact of Automated Parameter Optimization on
+Defect Prediction Models,” Transactions on Software Engineering
+(TSE), pp. 683–711, 2018.
+
+[51] P. Thongtanunam, S. McIntosh, A. E. Hassan, and H. Iida, “Revis-
+iting Code Ownership and its Relationship with Software Quality
+in the Scope of Modern Code Review,” in Proceedings of the Christoph Bergmier is a Lecturer in Data Sci-
+International Conference on Software Engineering (ICSE), 2016, pp. ence and Artificial Intelligence, and a 2019 ARC
+1039–1050. DECRA Fellow in the Monash Faculty of In-
+
+formation Technology. His fellowship is on the
+[52] P. Thongtanunam, C. Tantithamthavorn, R. G. Kula, N. Yoshida, development of "efficient and effective analyt-
+
+H. Iida, and K.-i. Matsumoto, “Who Should Review My Code? ics for real-world time series forecasting". He
+A File Location-based Code-reviewer Recommendation Approach also works as a Data Scientist in a variety of
+for Modern Code Review,” in Proceedings of the International Con- projects with external partners in diverse sec-
+ference on Software Analysis, Evolution, and Reengineering (SANER), tors, e.g. in healthcare or infrastructure main-
+2015, pp. 141–150. tenance. Christoph holds a PhD in Computer
+
+[53] Z. Wan, X. Xia, A. E. Hassan, D. Lo, J. Yin, and X. Yang, Science from the University of Granada, Spain,
+“Perceptions, expectations, and challenges in defect prediction,” and an M.Sc. degree in Computer Science from the University of Ulm,
+IEEE Transactions on Software Engineering, 2018. Germany.
+
+[54] S. Wattanakriengkrai, P. Thongtanunam, C. Tantithamthavorn,
+H. Hata, and K. Matsumoto, “Predicting defective lines using a
+model-agnostic technique,” 2020.
+
+[55] G. I. Webb, “Opus: An efficient admissible algorithm for un-
+ordered search,” Journal of Artificial Intelligence Research, vol. 3,
+pp. 431–465, 1995.
+
+[56] G. I. Webb and S. Zhang, “K-optimal rule discovery,” Data Mining
+and Knowledge Discovery, vol. 10, no. 1, pp. 39–79, 2005.
+
+[57] Y. Yang, D. Falessi, T. Menzies, and J. Hihn, “Actionable analytics
+for software engineering,” IEEE Software, vol. 35, no. 1, pp. 51–53,
+2017.
+
+[58] S. Yathish, J. Jiarpakdee, P. Thongtanunam, and C. Tantithamtha-
+vorn, “Mining Software Defects: Should We Consider Affected John Grundy is Australian Laureate Fellow and
+Releases?” in In Proceedings of the International Conference on Soft- Professor of Software Engineering at Monash
+ware Engineering (ICSE), 2019, p. To Appear. University, Australia. He has published widely
+
+[59] T. Zimmermann, N. Nagappan, H. Gall, E. Giger, and B. Murphy, in automated software engineering, domain-
+“Cross-project Defect Prediction,” in Proceedings of the European specific visual languages, model-driven engi-
+Software Engineering Conference and the Symposium on the Founda- neering, software architecture, and empirical
+tions of Software Engineering (ESEC/FSE), 2009, pp. 91–100. software engineering, among many other areas.
+
+He is Fellow of Automated Software Engineering
+and Fellow of Engineers Australia.
+
+Dilini Rajapaksha received the BSc(hons) de-
+gree from Sri Lanka Institute of Information
+Technology (SLIIT). She is currently a Ph.D.
+candidate at Monash University, Australia. Her
+research interests include Machine Learning
+and Time-series Forecasting. The goal of her
+Ph.D. is to provide local explanations for the pre-
+dictions given by the time-series and machine
+learning models.
+
+Chakkrit Tantithamthavorn is a Lecturer in
+Software Engineering and a 2020 ARC DECRA
+Fellow in the Faculty of Information Technol- Wray Buntine is a Professor in Machine Learn-
+ogy, Monash University, Australia. His current ing in the Faculty of Information Technology at
+fellowship is focusing on the development of Monash University in Melbourne, Australia, and
+“Practical and Explainable Analytics to Prevent a recipient of the 2019 Google AI Impact Chal-
+Future Software Defects”. His work has been lenge. He is known for his theoretical and ap-
+published at several top-tier software engineer- plied work, probabilistic methods for document
+ing venues, such as the IEEE Transactions on and text analysis, social networks, data mining
+Software Engineering (TSE), the Springer Jour- and machine learning. His work is supported by
+nal of Empirical Software Engineering (EMSE) many high-profile organisations such as Google
+
+and the International Conference on Software Engineering (ICSE). More and the NASA Ames Research Centre, as well
+about Chakkrit and his work is available online at http://chakkrit.com. as Wall Street and Silicon Valley startups.

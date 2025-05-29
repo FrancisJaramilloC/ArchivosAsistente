@@ -1,0 +1,1599 @@
+﻿Signing in Four Public Software Package Registries:
+Quantity, Quality, and Influencing Factors
+
+Taylor R. Schorlemmer Kelechi G. Kalu Luke Chigges Kyung Myung Ko
+Purdue University Purdue University Purdue University Purdue University
+
+tschorle@purdue.edu kalu@purdue.edu lchigges@purdue.edu ko112@purdue.edu
+
+Eman Abu Ishgair Saurabh Bagchi Santiago Torres-Arias James C. Davis
+Purdue University Purdue University Purdue University Purdue University
+
+eabuishg@purdue.edu sbagchi@purdue.edu santiagotorres@purdue.edu davisjam@purdue.edu
+
+Abstract—Many software applications incorporate open-source source [3]. Open-source software packages depend on other
+third-party packages distributed by public package registries. packages, creating software supply chains [4]. Malicious
+Guaranteeing authorship along this supply chain is a chal- actors have begun to attack software supply chains, injecting
+lenge. Package maintainers can guarantee package authorship malicious code into packages to gain access to downstream
+through software signing. However, it is unclear how common systems [4]. These attacks have affected critical infrastruc-
+this practice is, and whether the resulting signatures are ture and national security [5]–[8].
+created properly. Prior work has provided raw data on registry Many mitigations have been proposed for software sup-
+signing practices, but only measured single platforms, did not ply chain attacks. Some approaches seek to increase confi-
+consider quality, did not consider time, and did not assess dence in a package’s behavior, e.g., measuring use of best
+factors that may influence signing. We do not have up-to-date practices [9], [10], independent validation [11], and for-
+measurements of signing practices nor do we know the quality mal guarantees [12]; Other approaches target the package’s
+of existing signatures. Furthermore, we lack a comprehensive provenance, e.g., Software Bill of Materials (SBOMs) [13],
+understanding of factors that influence signing adoption. [14] and “vendoring” trusted copies of dependencies [15].
+
+This study addresses this gap. We provide measurements The strongest guarantee of a package’s provenance is a
+across three kinds of package registries: traditional software cryptographic signature by its maintainer. Prior work has
+(Maven, PyPI), container images (DockerHub), and machine noted that many packages are unsigned [16], [17]. How-
+learning models (Hugging Face). For each registry, we describe ever, we lack up-to-date measurements of software signing
+the nature of the signed artifacts as well as the current quantity practices, and we do not know the general quality of existing
+and quality of signatures. Then, we examine longitudinal trends signatures. Furthermore, we lack a deeper understanding of
+in signing practices. Finally, we use a quasi-experiment to factors that affect adoption rates. This knowledge would
+estimate the effect that various factors had on software signing guide future efforts to incentivize software signing, so that
+practices. To summarize our findings: (1) mandating signature the provenance of software supply chains can be improved.
+adoption improves the quantity of signatures; (2) providing Our work provides this knowledge: we measure soft-
+dedicated tooling improves the quality of signing; (3) getting ware signing practices in four public software package
+
+registries, and we use that data to infer factors that in-
+started is the hard part — once a maintainer begins to sign, fluence software signing. We selected four registries for a
+they tend to continue doing so; and (4) although many supply quasi-experiment [18]:1 two with signing policies (Maven-
+chain attacks are mitigable via signing, signing adoption is positive, PyPI-negative), one with dedicated tooling (Dock-
+primarily affected by registry policy rather than by public erHub), and one with no stance on signing (Hugging Face).
+knowledge of attacks, new engineering standards, etc. These Under the assumption that maintainers behave similarly
+findings highlight the importance of software package registry across registries, comparing signing practices in these reg-
+managers and signing infrastructure. istries will shed light on the factors that influence soft-
+
+ware signing. In addition to registry-dependent variables, we
+1. Introduction consider three registry-independent factors: organizational
+
+policy, dedicated signing tools, signing-related events such
+Commercial and government software products incor- as high-profile cyberattacks, and the startup effort of signing.
+
+porate open-source software packages [1], [2]. In a 2023 Here are the highlights of our results. Registry-specific
+study of 1,703 commercial codebases across 17 sectors
+of industry, Synopsys found that 96% used open-source 1. A quasi-experiment seeks cause-and-effect relationships between in-
+code, and 76% of the total application code was open- dependent and dependent variables without subject randomization.
+
+arXiv:2401.14635v2  [cs.CR]  14 Apr 2024
+
+
+
+signing policies have a large effect on signing frequency: Selecting and managing software dependencies is thus
+requiring signing yields near-perfect signing rates (Maven), an important software engineering practice [29], [30]. Soft-
+while decreasing its emphasis reduces signing (PyPI). Sign- ware engineers must decide which packages to use in
+ing remains difficult — only the registry with dedicated their projects, i.e., what to include in their application’s
+signing tools had perfect signature quality (DockerHub), software supply chain [31], [32]. Engineers consider many
+while the other three had signature quality rates of 68.5% aspects, encompassing functionality, robustness, maintain-
+(Maven), 50.2% (PyPI), and 20.2% (Hugging Face). We ability, compatibility, popularity, and security [19], [33]–
+observed no effects from signing-related news, such as [35]. Specific to security, various tools and methodologies
+high-profile cyberattacks and new engineering standards that have been proposed. These include in-toto [36], repro-
+recommend software signing. Finally, the first signature is ducible builds [37], testing [38], [39], LastPyMile [35],
+the hardest: after a maintainer first signs a package, they are SBOMs [40], and BuildWatch [41]. Okafor et al. summa-
+likely to continue signing that package. rized these approaches in terms of three security properties
+
+To summarize our contributions: for a project’s software supply chain: validity (packages are
+1) We present up-to-date measurements of software sign- what they claim to be), transparency (seeing the full chain),
+
+ing practices — quantity and quality — in four major and separation of concerns [26]. Validity is a prerequisite
+software package registries. property — if a individual package is invalid, transparency
+
+2) We use a quasi-experiment to estimate the effect of and separation will be of limited use.
+several factors on software signing practices. Registry
+policies correlates with quantity. Dedicated tooling cor- 2.2. Promoting Validity via Software Signing
+relates with quality. Signing events do not correlate
+with signing practices. Starting to sign correlates with Software signing is the standard method for establishing
+continued signing. the validity of packages. Signing uses public key cryptogra-
+
+phy to bind an identity (e.g., a package maintainer’s private
+2. Background key) to an artifact (e.g., a version of a package) [42]. With
+
+an artifact, a signature, and a public key, one can verify
+§2.1 discusses software supply chains. §2.2 describes whether the artifact was indeed produced by the maintainer.
+
+software signing, generally and in our target registries. Software signing is a development practice recommended by
+industry [9], [43], [44] and government [45], [46] leaders.
+
+2.1. Software Supply Chains
+2.2.1. Signing Process and Failure Modes. Most software
+
+In modern software development, engineers commonly package registries require similar signing processes. Figure 1
+integrate and compose existing units of functionality to cre- illustrates this process, beginning with a maintainer and a
+ate novel applications [3]. Each unit of functionality is com- (possibly separate) signer. They publish a signed package
+monly distributed in the form of a software package [19]: and separately the associated cryptographic material, so that
+software in source code or binary representation, accompa- a user can assess the validity of the result.
+nied by documentation, shared under a license, and distin- In package registries, there are two typical identities of
+guished by a version number. These units of functionality the signer. In the maintainer-signer approach, the main-
+may be available directly from version control platforms tainer is also the signer (e.g., Maven). In the registry-
+(e.g., source code [20], [21] or lightweight GitHub Pack- signer approach, the maintainer publishes a package and
+ages [22])), but are more commonly distributed through sep- the registry signs it (e.g., NPM). These approaches trade
+arate software package registries [23], [24]. These registries usability against security. Managing signatures is harder for
+serve both package maintainers (e.g., providing storage and maintainers, but the maintainer-signer approach gives the
+advertising) and package users (e.g., indexing packages for user a stronger guarantee: the user can verify they have the
+search, and facilitating dependency management). These same package signed by the maintainer. The registry-signer
+facilities for software reuse result in webs of dependencies approach is easier for maintainers, but users cannot detect
+comprising the software supply chain [25], [26]. malicious changes made during the package’s handling by
+
+Many empirical studies report the widespread use of the package registry.
+software packages and the complexity of the resulting sup- Figure 1 also depicts failure modes of the signing
+ply chains. Synopsys’s 2023 Open Source Security and process. These modes stem from several factors, includ-
+Risk Analysis (OSSRA) Report examined 1,703 commercial ing the complexity of the signing process, the (non-)user-
+codebases across 17 industries [3], revealing that 96% of friendliness of the signing infrastructure, and the need for
+these codebases incorporate third-party open-source soft- long-term management. We based these modes on the error
+ware components, averaging 595 distinct open-source de- cases of GPG [47], but they are common to any software
+pendencies per project. Similarly, Kumar et al. reported that signing process based on public key cryptography. They are:
+over 90% of the top one million Alexa-ranked websites rely 1) Creation Failure: The Signer does not create keys or
+on external dependencies [27], and Wang et al. found that signature files.
+90% of highly popular Java projects on GitHub use third- 2) Bad Key: The Signer uses an invalid key, e.g., the
+party packages [28]. wrong key is used or it has become corrupted.
+
+
+
+Bad Key Key Key
+Revoked Expiration
+
+Creation 2 Publishing
+Failure Failure 5 6
+1 Keys Publish 4 Key
+
+Registry
+Registries
+
+Create Bad may not be Signature
+Signature separate Expiration
+
+Signer Creation 3 Publishing 7 Discovery
+Failure Failure Failure
+
+1 Signature Publish 4 Signature 8 Check Verified
+Registry Fetch Signature Package
+
+User
+
+Software
+Maintain ckage Publish Package
+
+Pa Registry
+Maintainer
+
+Figure 1. Maintainers create software packages and signers create keys which are used to create a signature. Each of these artifacts are published to a
+registry. Depending on ecosystem, the registries and the actors may or may not be separate. Users fetch these artifacts and can check signatures using
+infrastructure-specific tooling. This creates a verified package. Red and orange numbers indicate the failure modes described in §2.2.1. Red numbers
+indicate discernible failures. The orange numbers (modes 1, 4, and 8) are not distinguishable from one another by an external audit — when keys are
+missing, we cannot determine whether they were never created (mode 1), were not published (mode 4), or were undiscoverable by us (mode 8).
+
+3) Bad Signature: The resulting signature is incorrect or i.e., the container image. Maintainers sign the packages, but
+unverifiable for non-malicious reasons, such as signing unlike in Maven, PyPI, and Hugging Face, the cryptographic
+the wrong artifact or using an unsupported algorithm materials are stored and managed by a registry service called
+(e.g., use of an unknown algorithm). Notary that is run in conjunction with DockerHub. This
+
+4) Publishing Failure: The Signer does not publish the system provides a compromise between maintainer-signer
+cryptographic material — signature and public keys — and registry-signer: the maintainer attests to publication of
+to locations accessible to the end user. the image, but the user must trust that the Notary service is
+
+5) Key Revoked: The Signer revokes the key used to sign not compromised (loss of cryptographic materials).
+the artifact, e.g., due to theft or a key rotation policy.
+
+6) Key Expired: Some kinds of keys expire after a fixed 3. Related Works
+lifespan. Associated signatures are no longer valid.
+
+7) Signature Expired: Some signatures also expire. We discuss work on software signing challenges (§3.1)
+8) Discovery Failure: The user may fail to retrieve sig- and prior measurements of signing practices (§3.2).
+
+natures or keys. This case is distinct from Publishing
+Failure: the material may be available, but the user does 3.1. Challenges of Software Signing
+not know where to look.
+
+We omit from this list any failure modes associated with 3.1.1. Signing by Novices. Like other cryptographic activi-
+cryptographic strength (e.g., short keys or broken ciphers), ties [49], [50], signing artifacts is difficult for people without
+since these concerns vary by context [48]. cryptographic expertise. The ongoing line of “Why Johnny
+2.2.2. Signing Targets. We detail the three kinds of signing Can’t Encrypt” works, begun in 1999 [51], enumerates
+used across the four registries considered in this work. These confusion in the user interface [52], [53] and the user’s
+registries largely follow the maintainer-signer style. The understanding of the underlying public key model [54],
+registries support the signing of different artifacts. [55], and other usability issues [56]. Automation is not a
+
+silver bullet — works by Fahl et al. [57] and Ruoti et
+Maven, PyPI—Packages: In Maven (Java) and PyPI al. [58] both found no significant difference in usability
+
+(Python), the signing target is the software package. when comparing manual and automated encryption tools,
+Hugging Face—Commits: In Hugging Face (machine though Atwater et al. [59] did observe a user preference for
+
+learning models), the signing target is the git commits that automated solutions.
+underlie the package. Signed commits may be interleaved
+with unsigned ones, reducing the security guarantee of a 3.1.2. Signing by Experts. Even when experts adopt sign-
+package that combines both kinds of commits. Hugging ing, they have reported many challenges. Some concerns are
+Face’s commit-based approach means that signatures only specific to particular signing tools, e.g., Pretty Good Privacy
+ensure that the changes to package artifacts are authentic. (PGP) has been criticized for issues such as over-emphasis
+
+DockerHub—Packages (container images): In DockerHub on backward compatibility and metadata leaks [60], [61].
+(Docker container images), the signing target is the package, Other concerns relate to the broader problems of signing
+
+
+
+over time, e.g., key management [62]–[64], key discov- Signature Adoption
+ery [65], [66], cipher agility [67], and signature distribu-
+tion [68]. Software signing processes and supporting au- Create No No Signature
+tomation remain an active topic of research [64], [69], [70]
+
+Incentives
+• Intrinsic Yes
+
+3.1.3. Our Contribution. Our work measures the adoption • Extrinsic
+of signing (quantity and quality) across multiple package Maintainer No Signing
+
+Failure
+registries. Our data indicates the common failure modes of Correctly
+
+Yes Good
+software signing for the processes employed by the four Signature
+studied registries. Our data somewhat rebuke this literature,
+showing the importance of factors beyond perceived usabil- Figure 2. Incentives influence how maintainers adopt software signing. The
+ity and individual preference. maintainer decides weather or not to create a signature. If a maintainer
+
+decides to create a signature, they can either follow the signing process
+(i.e., Figure 1) correctly or not. Correctly following the signing process
+
+3.2. Empirical Data on Software Signing Practices results in a good signature but incorrectly following the process results in
+a signing failure.
+
+Large-scale empirical measurements of software signing
+practices in software package registries are rare. In 2016, TABLE 1. KINDS OF INCENTIVES CONSIDERED. THE SECOND COLUMN
+Kuppusamy et al. [16] reported that only ∼4% of PyPI IS OUR HYPOTHESES: WHETHER THE INCENTIVE WAS PREDICTED TO
+projects listed a signature. In 2023, Zahan et al. examined INCREASE (↑) OR DECREASE (↓) SIGNATURE ADOPTION (CF. §5). THE
+
+signature propagation [9], reporting that only 0.1% (NPM) THIRD COLUMN IS THE OBSERVED EFFECT (CF. §7).
+
+and 0.5% (PyPI) of packages publish the signed releases Factor Expectation Observed Effect
+of their packages to the associated GitHub repositories. In
+2023, Jiang et al. found a comparably low signing rate in Registry policies ↕ ↕ quantity
+Hugging Face [19]. In 2023, Woodruff reported that signing Dedicated tooling ↑ ↑ quality
+rates in PyPI were low, and that many signatures were of low Signing events ↑ None
+quality (e.g., unverifiable due to missing public keys) [17]. High startup cost ↓ ↓ quantity
+
+Our study complements existing research by aggregating
+and comparing the prevalence of signing across various
+software package registries, in contrast to previous studies In Figure 2, we illustrate how incentives might apply
+that primarily focus on single registries. We publish the first to signature adoption. We define a signing incentive as a
+measurements of signing in Maven and DockerHub, and factor that influences signature adoption. Although intrinsic
+the first longitudinal measurements in Maven, DockerHub, incentives might contribute to signature adoption (e.g., altru-
+and Hugging Face. Our multi-registry approach allows us to ism), we focus on extrinsic incentives because they are more
+both observe and infer the causes of variation in signature easily observed. As summarized in Table 1, we examined
+quantity and quality. four kinds of external incentives that might influence a
+
+maintainer’s signing practices. We formulated hypotheses
+4. Signing Adoption Theory as to their effects, but behavioral economics suggests that
+
+even the most obvious hypothesis must be tested.
+Although software signing is recommended by engineer- To operationalize the concept of signing practices, we
+
+ing leaders (§2.2), prior work shows that signing remains define signature adoption as a maintainer’s decision to (1)
+difficult (§3.1 and successful adoption is rare (§3.2). To pro- create a signature (quantity), and (2) to follow the signing
+mote the successful adoption of signing, we must understand process correctly in doing so (quality). To secure software
+what factors influence maintainers in their signing decisions. supply chains, we want to identify incentives that sway the
+Even though using security techniques like signing is gener- behavior of the maintainer community, not just individuals.
+ally considered good practice [43], [44], maintainers do not Going forward, we thus call Signing Quantity the number
+always follow best practices [71]. Prior work has focused or proportion of signed artifacts present within a given
+on the usability of signing techniques (§3), but we posit that registry, and Signing Quality the condition of the signatures
+a maintainer’s incentives to sign are also important. which are present (i.e., how many of them are sound, and
+
+Behavioral economics examines how incentives influ- how many display which of the failure modes indicated
+ence human behavior [72]. Economists typically distinguish in Figure 1). For example, suppose that 90% of a registry’s
+between incentives that are intrinsic (internal) and extrinsic artifacts are signed, but only 10% of these signatures have
+(external) [73]. Incentives can change how individuals make available public keys. We would consider this registry as ex-
+decisions, although the relationships are not always obvi- periencing high quantity, but low quality, signing adoption.
+ous [74], [75]. For example, Titmuss [76] found that paying Given evidence to support the theorized relationship
+blood donors could reduce the number of donations due to a between these factors and signature adoption (Figure 2), one
+perceived loss of altruism. In a similar way, we theorize that could predict the quantity and the quality of signatures in a
+incentives influence how maintainers adopt software signing. given environment, as well as the effect of an intervention
+
+
+
+affecting maintainers’ incentives. 4) Measure Signature Adoption(§6.5): Measuring the
+quantity and quality of signatures for each registry.
+
+5. Research Questions 5) Evaluate Adoption Factors(§6.6): Comparing signa-
+ture adoption among registries and across time.
+
+We ask three questions across two themes:
+Theme 1: Measuring Signing in Four Package Registries Select
+Theme 1 will update the cybersecurity community’s under- Registries
+standing on the adoption of software signing.
+
+• RQ1: What is the current quantity and quality of
+signing in public registries?
+
+• RQ2: How do signing practices change over time?
+Collect Filter Measure Evaluate
+
+Theme 2: Signing Incentives Packages Packages Signatures Adoption
+
+Theme 2 evaluates hypotheses about the effects that sev-
+Figure 3. First, we select package registries that represent a range of
+
+eral types of external incentives have on software signing software types and signing policies. Our selected registries include PyPI,
+adoption. Maven Central, Docker Hub, and Hugging Face. Next, we collect a list of
+
+• RQ3: How do signing incentives influence signature packages for each platform. Then, we filter the list of packages to a sample
+of packages for each platform. On the remaining packages, we measure the
+
+adoption? quality and quantity of signatures. Finally, we use these measurements to
+To evaluate RQ3, we test four hypotheses. evaluate factors influencing adoption.
+
+H1: Registry policies that explicitly encourage or dis-
+courage software signing will have the corresponding 6.1. Experimental Design
+direct effect on signing quantity. This hypothesis is based
+on our experience as software engineers, “reading the We first describe the types of experiments needed to
+manual” for the ecosystems in which we operate. answer our RQs (§6.1.1). Then we summarize quasi exper-
+
+iments and why they work well for our study (§6.1.2).
+
+H2: Dedicated tooling to simplify signing will increase 6.1.1. Answering our RQs. To answer RQ1, we measure
+signing adoption (quantity and quality). The basis for the quantity and quality of signatures in the registries of
+this hypothesis is the prior work showing that signing is interest. To answer RQ2, we examine trends in signature
+difficult and that automation can be helpful §3. adoption and failure modes over time. The measurements
+
+themselves are fairly straightforward, following prior work
+H on software signing quantity [9], [16], [19] and quality [17].
+
+3: Cybersecurity events such as cyberattacks or the
+publication of relevant government or industry standards In §6.5 we define quality systematically, but our approach
+will increase signing adoption (quantity and quality). resembled prior work.
+The basis for this hypothesis is the hope that software RQ3 requires us to test the correlation between incen-
+engineers learn from failures and uphold best practices, tives and signature adoption (quantity and quality). Our
+per the ACM/IEEE code of ethics [77]. goal is similar in spirit to the usability studies performed
+
+by Whitten & Tygar [51], Sheng et al. [52], and Routi et
+H al. [55] — like them, we are interested in factors influencing
+
+4: The first signature is the hardest, i.e., after a package
+is configured for signing adoption, it will continue to be the adoption of signing. However, we are not interested in
+signed. Like H2, this hypothesis is based on prior work the usability of individual signing tools, in which context
+showing that signing is difficult — but knowing that the controlled experiments are feasible. Instead, we want to
+cost of learning to sign need be paid only once. understand the factors affecting signing practices across
+
+package registries. A controlled experiment would randomly
+assign maintainers to platforms with different registry fac-
+
+6. Methodology tors, hold other variables constant, and measure the effect
+for hypothesis tests. As this level of control is impractical,
+
+This section describes our methods. In §6.1 we give our we instead use a quasi experiment to answer RQ3.
+experimental design. Following that design, our methodol-
+ogy has five stages. As illustrated in Figure 3: 6.1.2. Quasi Experiments. Quasi experiments 2 are a form
+
+of experiment whereby (1) treatments (instances of indepen-
+1) Select Registries(§6.2): Picking appropriate registries
+
+for our study. 2. The terms quasi experiment and natural experiment are often used
+2) Collect Packages(§6.3): Methods used to collect a list interchangeably, but some researchers distinguish between the two. Treat-
+
+of packages from each registry. ments applied in a natural experiment are not intended to influence the
+outcome, whereas treatments in a quasi experiment are planned [78]. Since
+
+3) Filter Packages(§6.4): Filter list of packages so that some registry factors are intended to cause changes in signature adoption,
+remaining packages are adequately versioned. our study is a quasi experiment, not a natural experiment.
+
+
+
+dent variables) are applied to subjects; and (2) outcomes (de- We illustrate our experimental design with two evalua-
+pendent variables) are measured; but (3) the assignment of tions, which we perform later in detail. Our four hypotheses
+treatments to subjects is not random [18], [78]. Instead, the for RQ3 include incentives that are registry-specific (H1, H2)
+application of treatments is based on characteristics of the and that are registry-independent (H3, H4). To assess the
+subjects themselves [79]. This method is often used where effect of registry-specific incentives, we examine whether
+controlled experiment is infeasible, e.g., measuring impacts the date of an associated event is correlated with a significant
+of government policies on populations [78], [80], [81]. change in signing adoption within only the pertinent registry.
+These studies produce the strongest results when treatments For example, if a change in PyPI’s signing policy changes
+occur independently of the subjects, or are exogenous [78], the signing rates in PyPI, while rates in other registries
+[81]. are undisturbed, then we would view this as support for
+
+A quasi experiment would allow us to test our hypothe- H1. Conversely, to assess the effect of registry-independent
+ses by leveraging naturally occurring differences between incentives, we examine whether the date of an associated
+registries. If we can identify registries that vary along the effect is correlated with a significant change in signing
+dimensions of interest, then comparing signing adoption in adoption in multiple registries. For example, if after a major
+these registries would allow us to infer cause-effect rela- software supply chain attack we see changes in signing
+tionships from the incentives of interest. Furthermore, the adoption in PyPI and Maven, then we would view this as
+existence of multiple time periods and comparison groups support for H3.
+also strengthens the outcomes of this approach [81]. Based on this design, we now proceed through the five
+
+Our quasi experiment relies on a major assumption: stages indicated in Figure 3.
+
+Assumption of Structural Similarity: Our quasi- 6.2. Stage 1: Select Registries
+experiment assumes that there are no uncontrolled con-
+founding factors. Such factors would differentially affect In this section, we explain what makes a registry a good
+software signing adoption between registries. In other candidate for this study (§6.2.1) and justify our use of PyPI,
+words, we assume that the registries are used by soft- Maven Central, Docker Hub, and Hugging Face (§6.2.2).
+ware engineers in similar ways, without registry-specific
+signing influences other than those considered. 6.2.1. Selection Requirements. We searched for software
+
+package registries which have natural variations in signing
+We base this assumption in the cybersecurity and soft- incentives. We selected some registries that have expe-
+
+ware engineering research literature. For example, Zahan et rienced changes to their signing infrastructure and poli-
+al. [14] compared NPM and PyPI and found comparable cies over time. We focused on package registries with
+behaviors across a range of security measures and prac- maintainer-signed signatures, as defined in §2, for two rea-
+tices, including security policies, vulnerabilities, dependency sons: 1) they place a greater burden on the maintainer and
+update tools, maintenance procedures, signed-releases, and thus the effect of incentives would be more observable; and
+potentially risky workflows. Bogar et al. [82] offered further 2) they provide a better guarantee of provenance than server-
+support for this assumption in a study of several software signed signatures (i.e., the artifact hasn’t been modified
+ecosystems, writing that “Ecosystems tend to share many between the maintainer signing it and uploading it to a
+values but differentiate themselves based on a few distinctive registry). Finally, the selected registries should be popular
+values strongly related to their purpose and audience.” so that they are representative of publicly available software.
+While there is limited research on PTM registries, Jiang
+et al.’s [19] reported that the PTM re-use workflow for 6.2.2. Selected Registries. Following these requirements,
+PTMs on Hugging Face to that of traditional software. This we identified 4 registries for study: PyPI, Maven Central,
+suggests comparability between the PTM space and the Docker Hub, and Hugging Face. Table 2 summarizes these
+traditional software ecosystem space. These and other works registries. They represent some of the most popular pro-
+suggest a level of uniformity across registries with respect gramming languages [83] (Java, Python), the most popular
+to engineering practices. container technology [84] (Docker), and the most popular
+
+With this assumption in mind, we conduct the quasi ML model hub [23] (Hugging Face). Next we elaborate on
+experiment. In our study, registry factors are treatments, each selected registry. All data is as of April 2024.
+maintainers are subjects, and signature adoption is the
+outcome. As noted, applying random registry factors to TABLE 2. THE SELECTED PACKAGE REGISTRIES, THEIR ASSOCIATED
+maintainers is impractical — this is effectively the same SOFTWARE TYPE, AND SIGNATURE TYPE.
+as randomly assigning maintainers to different platforms.
+Instead, characteristics of the maintainers (the registries they Registry Name Software Type Signature Type
+naturally use) determine which registry factors they experi- PyPI Python PGP (now deprecated)
+ence. Since maintainers’ registry selections are not known Maven Central Java PGP
+to be influenced by signing infrastructure or policy, we can Docker Hub Containers DCT
+also consider registry factors as exogenous treatments. Hugging Face ML Models Git Commit Signing
+
+
+
+(1) PyPI: PyPI is the primary registry for the exchange imitating [17], so that the reported data would not be too
+of software packages written in the Python programming different from current practices.
+language. PyPI hosts more than 520,000 packages [85]. PyPI
+allows maintainers to sign packages with PGP signatures.
+The PyPI registry owners deemphasized the use of PGP 6.3.2. Details Per-Registry. PyPI: In PyPI, packages are
+signatures on 22 Mar 2018 [86] and later deprecated them distributed by version as wheels or source distributions (i.e.,
+on 23 May 2023 [87]. Pre-existing signatures remain, but each package may have multiple versions each with their
+users cannot (easily) add new signatures. own distributions). For example, the latest version of the
+
+(2) Maven Central: Maven Central (Maven) is the primary requests package is 2.31.0 (as of this writing) and has two
+registry for the exchange of software packages written in distribution files: (1) a wheel file named requests-2.31.0-
+the Java programming language. Maven hosts more than py3-none-any.whl and (2) a source distribution file named
+499,000 packages [88]. Like PyPI, Maven allows maintain- requests-2.31.0.tar.gz. Both of these files can be signed, so
+ers to sign packages with PGP signatures. Unlike PyPI, on we collect each of these files during our assessment of PyPI.
+Maven, signatures have been mandatory since 2005 [89]. To collect all packages from PyPI between 01 Jan 2015
+
+(3) Docker Hub: Docker Hub is the primary registry and 31 Dec 2023, we used Google’s BigQuery PyPI dataset.
+for the exchange of virtualized container images in the This dataset contains a list of package distributions and
+Docker format. Docker Hub hosts more than 1,000,000 con- associated metadata for each package hosted on PyPI.
+tainer images [88]. Docker Hub uses Docker Content Trust
+(DCT) [90] to sign container images. As noted in §2, Docker Since this study is only concerned with the quality and
+Hub has dedicated tooling for signing, integrated in the quantity of signatures, we did not need to download any
+Docker CLI. Sigstore’s Cosign also supports signing docker packages without signatures (we only need to count how
+images [91], but is not yet well integrated in Docker Hub. In many packages have no signature). We downloaded signed
+2019, Docker Hub began including more information about packages to assess the quality of their signatures.
+image provenance (e.g., author, OS, digest, architecture) on Maven Central: Maven Central packages are stored in a
+its web UI, but does not mandate signing like Maven does. directory structure organized by namespace, package name,
+
+(4) Hugging Face: Hugging Face is the primary registry and version number. Each version of a package contains
+for the exchange of neural network models [23]. Hugging several files for use by the downstream user. These typically
+Face hosts more than 590,000 models [92]. Hugging Face include .jar, .pom, .xml, and .json files which include
+supports the signing of git commits [93]. Hugging Face has the package, source distributions, tests, documentation, or
+no stated policy towards signing, and we are aware of no manifest information. Each of the files included in a package
+signing events specific to Hugging Face. version typically has a corresponding PGP signature file
+
+with a .asc extension.
+6.3. Stage 2: Collect Packages We used ecosyste.ms’ data dump from 01 Mar 2024 to
+
+collect packages from Maven Central. This data dump con-
+Next, our goal was to collect a list of the packages from tains a list of package distributions and associated metadata
+
+each of the selected registries, so that we could sample for each package hosted on Maven Central.
+from it and measure signing practices. For each registry,
+we attempted to enumerate all packages available on the Docker Hub: Docker Hub packages are organized into
+platform. We used ecosyste.ms [88] as an index for the repositories which are collections of images. Each repository
+packages available from Maven Central and Docker Hub. contains tags which are versions of the image. These tags
+For Hugging Face, we used the Hugging Face API to can be signed using Docker Content Trust (DCT). DCT is
+collect packages. For PyPI, we used the Google BigQuery a Docker-specific signing tool built on Notary [95].
+dataset [94] to collect packages. In the remainder of this To collect all packages from Docker Hub between 01
+subsection, we describe the package structure and collection Jan 2015 and 31 Dec 2023, we use ecosyste.ms’ data
+techniques used for each registry. dump from 01 Mar 2024. This data dump contains a list
+
+of package distributions and associated metadata for each
+6.3.1. The Ecosyste.ms Cross-registry Package Index. package hosted on Docker Hub.
+Ecosyste.ms provides a comprehensive cross-registry pack-
+age index, aggregating package data from multiple registries Hugging Face: Hugging Face hosts models, datasets, and
+into a database. Periodically, ecosyste.ms releases datasets spaces for machine learning. For the purpose of this study,
+that can be downloaded and subjected to detailed queries. we only focus on the models, which are stored as git
+In this work, we used the most recent version of the dataset repositories. Hugging Face uses git commit signing, i.e.,
+— 01 Mar 2024. This dataset indexed PyPI, Docker Hub, signatures occur on a per-commit basis for each repository.
+and Maven Central, but not Hugging Face. We did not use To collect all of the model packages on Hugging Face
+this dataset for PyPI because the BigQuery dataset contains between 01 Jan 2015 and 31 Dec 2023, we use the Hugging
+signing information. Face Hub Python interface to generate a list of packages
+
+We sought to obtain data up to 31 Dec 2023 from each (and metadata) in our date range. We then iteratively clone
+registry. We arbitrarily set the start date to 01 Jan 2015 all repositories from Hugging Face.
+
+
+
+TABLE 3. PACKAGES AVAILABLE AFTER EACH STAGE OF THE TABLE 4. SIGNATURE STATUSES AND WHETHER OR NOT THEY ARE
+PIPELINE. COLLECT PACKAGES REFERS TO THE TOTAL NUMBER OF MEASURABLE ON EACH PLATFORM. ✓: MEASURABLE. ✗: NOT
+
+PACKAGES AVAILABLE IN THE REGISTRY. FILTER PACKAGES REFERS TO MEASURABLE. –: THEORETICALLY MEASURABLE. PK: PUBLIC KEY.
+THE NUMBER OF PACKAGES WITH ≥ 5 VERSIONS BETWEEN 01 JAN
+2015 AND 31 DEC 2023 AND NON-GATED HUGGING FACE MODELS. Status Failure # PyPI Maven Docker HF
+MEASURE SIGNATURES REFERS TO THE NUMBER OF PACKAGES WE Good Signature – ✓ ✓ ✓ ✓
+
+ATTEMPTED TO MEASURE. DUE TO DOWNLOAD RATES, WE ONLY
+MEASURE A RANDOM SAMPLE OF THE FILTERED MAVEN CENTRAL No Signature 1 ✓ ✓ ✓ ✓
+
+PACKAGES (10% OF THE TOTAL POPULATION). Bad Signature 3 ✓ ✓ ✗ ✓
+Expired Signature 7 ✓ ✓ ✗ –
+
+Stage PyPI Maven Docker HF Expired PK 6 ✓ ✓ ✗ –
+Missing PK 4,8 ✓ ✓ ✗ –
+
+Collect Packages 623,346 499,588 1,001,771 559,517 Revoked PK 5 ✓ ✓ ✗ –
+Filter Packages 205,513 243,191 91,719 128,338 Bad PK 2 ✓ ✓ ✗ –
+Measure Signatures 205,513 49,959 91,719 128,338
+
+6.4. Stage 3: Filter Packages similar cryptographic methods, we cannot measure points
+of failure in the same manner as other registries. Using the
+
+After obtaining the lists of packages, we filtered them numbering system of Figure 1, in Table 4 we indicate which
+for packages of interest to our study. Since our study was signature failures can be measured on each platform.
+interested in effects over time, our primary filter was for 6.5.1. PGP. PyPI and Maven Central use PGP signatures to
+packages with multiple versions. In all of the registries, we secure packages. The measurements for these registries are
+filtered for all packages with ≥ 5 versions between 01 Jan similar, so we describe commonalities here.
+2015 and 31 Dec 2023. 3
+
+On Hugging Face, we also filter models that are gated Discovery: For PGP, we need to discover the public keys
+(i.e., they have some sort of access control). Examples associated with each signature. The most common method
+include pyannote/segmentation which requires users to agree for sharing public PGP keys is to use a public key server.
+to terms of use. These models account for 0.9% (5,138) Sonatype recommends the Ubuntu, OpenPGP, and MIT
+of the total models. We are unable to tell how many of servers [96]. We found 5 more servers via Google searches.
+these models have ≥ 5 commits in the time period, without On this set of 8 servers, we conducted a small-scale
+gaining access. In many cases, this requires agreeing to experiment to determine which servers to use in our study.
+terms of use, which we are unable to do at scale. Using a sample of ∼3,800 keys from PyPI and Maven
+
+See Table 3 for the number of packages available after Central, we found that only 4 servers worked reliably (i.e.,
+each stage of the pipeline. some servers are no longer functional or perform slowly).
+
+For example, the famous pgp.mit.edu server often times out.
+6.5. Stage 4: Measure Signatures We found that four servers responded consistently: key-
+
+server.ubuntu.com keys.openpgp.org keyring.debian.org, and
+pgp.surf.nl For each key, we queried each of these servers
+
+After filtering, we measured the quantity and quality of in order to find the public key associated with the signature.
+the signatures associated with the surviving packages. If we were unable to find the key in any of these servers,
+
+In §4 we defined signature quantity as the fraction of we marked the signature as having a missing public key.
+signed artifacts in a registry, and quality as the fraction Among our selected servers, the Ubuntu server was able
+of good signatures among those. Since signatures apply to discover the most keys, followed by the Surf, OpenPGP,
+to different units of analysis in each registry, we defined and Debian servers. The Surf server is queried last because
+quantity and quality somewhat differently for each registry. has the most overlap with the Ubuntu server (i.e., we are
+The nature of the signable artifacts was discussed earlier more likely to find the key by looking at other servers first).
+in this work. However, certain aspects of quality cannot be
+measured in all registries (e.g., signature expiration is not Verification: To verify a PGP signature, we use the gpg
+applicable to git commits). We use the remainder of this command line utility. This utility provides a verify command
+subsection to clarify signature quality for each registry. which can be used to verify the validity of a signature. This
+
+For quality, not all failure modes can be measured in command returns the status of the signature verification. We
+each registry. Recall that Figure 1 indicated failure modes parse this status to determine the quality of a signature.
+in a typical signing scheme. However, some registries use Expiration: For our measurements, we consider a key to
+unique signing schemes, such as Docker Content Trust be expired if the key’s expiration had passed at the time of
+(DCT). These schemes do not allow us to measure quality our measurement. There is no definitive way to determine
+in the same manner as other registries. Although they use if a signature was created before or after the key expired.
+
+Cryptographic Algorithm: The strength of a PGP key is
+3. Note that for Docker Hub we filtered for packages with ≥ 5 tags and determined by the cryptographic algorithm. The gp com-
+
+for Hugging Face we filtered for packages with ≥ 5 commits. The notion
+of a version for ML models is less clear than for software packages, so we mand line utility provides a list-packets command which
+used commits as a proxy. Hugging Face has some mechanisms (e.g., tags) can be used to extract metadata from a signature. This com-
+for versioning, but we found that these are not consistently used. mand returns the cryptographic algorithm and, particularly
+
+
+
+important for RSA keys, the key length. We compare this TABLE 5. FACTORS THAT COULD PROVIDE SIGNING INCENTIVES.
+to NIST’s recommendations [97]. FACTORS WERE IDENTIFIED VIA WEB SEARCHES BY FOUR AUTHORS,
+
+AND CATEGORIZED BY INCENTIVE TYPE PER TABLE 1.
+
+6.5.2. Details Per-Registry. PyPI: PyPI uses PGP signa- Factor Category Date
+tures to secure packages. As a result, we use the methods PyPI De-emph Registry policy Mar 2018
+described in §6.5.1 to measure the quality and quantity of Docker Hub Update Registry policy Sep 2019
+
+signatures on PyPI packages. PyPI Removed PGP Registry policy May 2023
+
+Maven Central: Maven Central requires PGP signatures NotPetya Signing event (attack) Jun 2017
+CCleaner Signing event (attack) Sep 2017
+
+on all artifacts. As a result, we use the methods described Magecart Signing event (attack) Apr 2018
+in §6.5.1 to measure the quality and quantity of signatures DockerHub Hack Signing event (attack) Apr 2019
+on PyPI packages. SolarWinds Signing event (attack) Dec 2020
+
+For Maven Central, we were unable to sample the entire Log4j Signing event (attack) Dec 2021
+
+filter population. Due to the high adoption quantity and NIST code signing Signing event (government) Jan 2018
+the number of files associated with each Maven Central CISA Publication Signing event (government) Apr 2021
+
+Exec. Ord. 14028 Signing event (government) May 2021
+package, verifying Maven Central packages requires a large
+amount of network traffic to download every file and its CMMC Signing event (standard) Jan 2020
+
+CNCF Best Practices Signing event (standard) May 2021
+signature. For this reason, we choose to only check a random SLSA Framework Signing event (standard) Jun 2021
+sample of the filter population (10% of the total population).
+See Table 3 for the number of packages we attempted to
+measure versus the total number of packages available.
+
+Docker Hub: Docker Hub uses Docker Content Trust signing events: software supply chain attacks, government
+(DCT) to sign image tags. This tool has first-class support in actions, and industry standards.
+the Docker CLI, so we use the docker trust inspect command Using these factors, we perform exploratory data anal-
+to verify the validity of signatures. Since DCT automates ysis (visual analysis) to identify trends in signing adoption.
+much of the signature process, we can only measure the This analysis was performed on another sample of the data
+presence of a signature (i.e., you cannot upload a bad to avoid biasing our final statistical tests. On the final data,
+signature with DCT). For this reason, all signatures are we use statistical tests to evaluate hypotheses H1–H3.
+considered valid unless they are missing.
+
+Hugging Face: Hugging Face uses git commit signing for We conduct statistical tests as follows:
+its models. Typically, git commit signatures are verified us-
+ing the git verify-commit command. This uses PGP under the • We assume that if an event (incentive) impacts a given
+hood, and still requires a public key to verify the signature. registry, then the effect will be measurable within 6
+On platforms like GitHub, the public key is stored on the months. This time horizon was selected to permit some
+user’s profile. However, Hugging Face does not currently amount of lag, while not introducing too many possible
+expose the public keys for its users [98]. Since users upload confounding events within the time frame.
+keys to Hugging Face they do not necessarily upload them • The data used in the tests are the daily signing rates
+to a public key server as in §6.5.1 — we tried and had a low from each registry (calculation: Number of signed units
+discovery rate. For this reason, verifying signatures with git / Total number of units).
+verify-commit is not actually representative of the signature • We select a 99% confidence level (p-values should be
+quality. Instead, we use Hugging Face’s UI to verify the < 0.01 to be considered significant)
+validity of signatures. Verified signatures are marked as
+good, and unverified signatures are marked as bad. We note two caveats: First, there are many comparisons
+
+that could be performed (4 registries x 16 events in Table
+5), but every additional test increases the risk of Type-1
+errors (false positives). For this reason, we only test the
+
+6.6. Stage 5: Evaluate Adoption hypotheses that are supported by exploratory data analysis
+and apply a Bonferroni correction to our p-values. Second,
+
+For RQ1 and RQ2, our method is to report and analyze where present, statistically significant results indicate cor-
+the statistics for each registry. relation, not causation. Our research is motivated by an
+
+To answer RQ3, we need to evaluate hypotheses H1–H underlying predictive theory. If the predicted results occur
+4.
+
+For these hypotheses, we need distinct factors corresponding at a statistically significant level, they support the theory.
+to each class of incentive. We identified a set of factors We conducted 3 kinds of statistical tests: (1) a one-
+through web searches such as “software supply chain attack” way ANOVA test on overall differences between registry
+or “government software signing standard”. Four authors adoption quantity; (2) a subsequent Tukey tests; and (3)
+collaborated in this process to reduce individual bias. selected independent t-tests to compare signing before and
+
+The resulting set of factors are given in Table 5. We after selected events. All tested distributions meet the as-
+identified changes in registry policies and in three kinds of sumptions inherent in the corresponding tests.
+
+
+
+7. Results We observed differences between signing failure modes
+by registry. The three most common failure modes on Maven
+
+For RQ1, we present the quantity and quality of sig- Central were expired public keys, missing public keys, and
+natures we measured in each registry in §7.1. For RQ2, bad public keys. Failures related to public keys accounted
+we describe changes in signing practices over time in §7.2. for over 99% of all Maven signing failures in 2023. The
+Finally, for RQ3, we assess the influence of incentives on three most common failure modes on PyPI were missing
+signing adoption in §7.3. public keys, revoked public keys, and expired public keys.
+
+Expired signatures are very rare, the only instances we could
+7.1. RQ1: Quantity and Quality of Signatures find were from 2014 versions of the leekspin package on
+
+PyPI Similar to Maven Central, public key related failures
+accounted for over 99% of all PyPI signing failures in 2023.
+
+In Table 6, we show the quantity and quality of signa- On Hugging Face, the registry records but does not publish
+tures in each registry. We show the total amount of signable the public keys disclosed by package maintainers.5 Due
+artifacts in each registry, how many of those are signed, and to the lack of published public keys, we were unable to
+the status of the subset of signed signatures. We show both determine the cause of the invalid signatures. Finally, we
+the most recent year of data (Jan-Dec 2023) and the entire observed no signing failures in Docker Hub.
+time period (01 Jan 2015 to 31 Dec 2023).
+
+Finding 2: Signing failures were common in three of
+7.1.1. Quantity of Artifact Signatures. With respect to the four studied registries. On Maven Central and PyPI,
+the quantity (proportion) of signed artifacts, the registries 24.0% and 53.1% of signatures between 01 Jan 2023 and
+lie in three groups by order of magnitude. First, Maven 31 Dec 2023 were invalid, respectively. On Hugging Face
+Central experiences the highest signing rate with 97.1% of the situation is worse, with 76.1% invalid signatures.
+artifacts signed in 2023. We conjecture that this degree of Lastly, on Docker Hub, we observed no signing failures.
+signing occurs only when signing is mandatory. 4 Second,
+Docker Hub has a low adoption rate with 1.0% of tags Cryptographic Algorithms: For Maven Central and PyPI,
+signed in 2023. Third, Hugging Face and PyPI currently we observed the use of several cryptographic algorithms. We
+have a negligible amount of signatures with 0.1% and 0.2% show the distribution of algorithms in Table 7. RSA was
+of artifacts signed in 2023, respectively. Keep in mind that the most common algorithm used in both Maven Central
+PyPI’s low signing rate includes data since the feature was and PyPI. In Maven Central, RSA was used in 96.01% of
+removed in 23 May 2023. Even considering this, the relative signatures. In PyPI, RSA was used in 85.82% of signatures.
+number of signed artifacts is still the lowest on Hugging RSA signature security is dependent on the key length.
+Face. Out of all 2.02M commits across the 100K packages In Table 8, we show the distribution of RSA key lengths
+on Hugging Face in 2023, only 1.24K are signed. used in Maven Central and PyPI. Of the RSA signatures in
+
+Maven Central, most of them used either 2048 or 4096 bit
+Finding 1: Between 01 Jan 2023 and 31 Dec 2023, all keys. The same is true for PyPI. These keysizes comply with
+registries aside from Maven Central had less than 2% the US NIST’s SP-800-78-5 baseline [97] for keysizes for
+of artifacts signed. Maven Central, the only registry in this decade. Only a small fraction of signatures used keys
+our study that mandates signing, had 97.1% of artifacts larger than 4096 bits or smaller than 2048 bits.
+signed in that same time period.
+
+Finding 3: For both Maven Central and PyPI, RSA
+7.1.2. Quality of Artifact Signatures. Failure Modes: was the most common cryptographic algorithm used in
+With respect to quality, each registry has a distinct flavor. signatures. Most RSA signatures used 2048 or 4096 bit
+On Docker Hub signatures either exist or not — we can keys. A small fraction used insecurely-small key sizes
+only tell if maintainers correctly signed a tag. On Hugging (<2048 bits) or very large key sizes (>4096 bits).
+Face, we can only tell if the signature was valid. On Maven
+Central and PyPI, we can measure the failure modes of Expired Keys: We report expired keys as a failure mode
+signatures. regardless of the publishing time of the artifact. For old
+
+Of the registries with measurable quality, Maven Central artifacts, this may be unfair, since the key was presumably
+has the best with 72.9% of signatures valid since 01 Jan valid at time of publication, and since a newer version of
+2023. PyPI has the next best quality with 48.4% of signa- the package may have been available. We investigated both
+tures valid since 01 Jan 2023. Not only does Hugging Face of these aspects for signatures whose keys had expired.
+have the lowest quantity of signed artifacts, but it also has First, we examined the typical time of validity, i.e.,
+the lowest quality of signed artifacts. Of the 1.24K signed the time remaining in the public key’s lifespan at time of
+artifacts, only 296 (23.9%) were valid. signature creation. Surprisingly, a substantial proportion of
+
+signatures are created after the expiration of the associated
+4. Not all Maven Central packages are signed. Some are ingested from public key, i.e., it was never a valid signature. For Maven
+
+other Java package registries and the Maven signing requirement is waived.
+Source: Personal communication with Maven team. 5. We asked the Hugging Face engineers for access. They declined.
+
+
+
+TABLE 6. THE NUMBER OF ASSESSED PACKAGES AND ARTIFACTS FROM EACH REGISTRY, THE PERCENT WITH AND WITHOUT SIGNATURES, AND
+THE BREAKDOWN OF SIGNATURE STATUS FOR SIGNED ARTIFACTS. FOR EACH MEASUREMENT, WE SHOW THE MOST RECENT YEAR AND THE ENTIRE
+
+MEASUREMENT PERIOD. “—”: NOT MEASURABLE; HUGGING FACE HIDES KEYS, ONLY DISCLOSING WHETHER VALIDATION SUCCEEDED.
+
+Registry PyPI Maven Central Docker Hub Hugging Face
+1 year (Total) 1 year (Total) 1 year (Total) 1 year (Total)
+
+Total Packages 93.2K (206K) 24.1K (50K) 70K (91.7K) 100K (128K)
+Total Versions 1.2M (4.83M) 378K (2.04M) 5M (9.52M) 2.02M (2.66M)
+Total Artifacts 2.75M (9.68M) 1.55M (7.96M) 5M (9.52M) 2.02M (2.66M)
+Unsigned Artifacts 99.8% (98.8%) 2.9% (5.9%) 99.0% (97.5%) 99.9% (99.9%)
+Signed Artifacts 0.2% (1.2%) 97.1% (94.1%) 1.0% (2.5%) 0.1% (0.1%)
+Good Signature 48.4% (50.2%) 72.9% (68.5%) 100% (100%) 23.9% (20.2%)
+Bad Signature 0.0% (0.2%) 0.2% (0.7%) 0.0% (0.0%) —
+Expired Signature 0.0% (0.0%) 0.0% (0.0%) 0.0% (0.0%) —
+Expired Public Key 6.6% (16.0%) 15.0% (23.0%) 0.0% (0.0%) —
+Missing Public Key 23.4% (16.0%) 7.3% (3.8%) 0.0% (0.0%) —
+Public Key Revoked 18.5% (15.7%) 0.5% (2.3%) 0.0% (0.0%) —
+Bad Public Key 3.1% (1.9%) 4.2% (1.6%) 0.0% (0.0%) —
+
+TABLE 7. CRYPTOGRAPHIC ALGORITHMS USED IN SIGNATURES. Quantity of Signatures Over Time
+Algorithm Maven Central PyPI 100
+RSA 96.01% 85.82%
+DSA 1.79% 11.22% 80 Maven Central
+EdDSALegacy 2.15% 2.71% Docker Hub
+RSA Sign Only 0.03% 0.00% 60 HuggingFace
+ECDSA 0.01% 0.26% PyPI
+
+PyPI PGP De-emphasis
+40 Docker Hub Attack
+
+TABLE 8. RSA KEY LENGTHS USED IN SIGNATURES. Docker Hub Update
+SolarWinds Attack
+
+Length Maven Central PyPI 20 PyPI PGP Removal
+
+8192 0.005% 0.142%
+4608 0.006% 0.000% 0
+4096 38.162% 49.317%
+3072 13.892% 2.174%
+2048 47.662% 48.223%
+1536 0.000% 0.001% Month
+1024 0.271% 0.143%
+
+Figure 4. Quantity of signed artifacts over time. Axes are time (monthly
+increments) and the percentage of signed artifacts per registry.
+
+Central, 16.8% of the artifacts whose public key eventually
+expired had signatures created after the expiration. For PyPI,
+11.4% of the artifacts whose public key eventually expired 7.2.1. Quantity of Artifact Signatures. In Figure 4, we
+had signatures created after the expiration. For signatures show the quantity of signed artifacts over time. We measured
+created with a still-valid public key, signatures on Maven signing rates for the signable artifacts published in that
+Central had a median of 1.37 years remaining in the public month. This figure shows how many such artifacts were
+key’s lifespan and those on PyPI had a median of 1.93 years signed, grouped by registry.
+remaining in the public key’s lifespan. We observe a stark contrast in signing quantity between
+
+Second, we examined the availability of an upgrade path Maven Central and the other registries. Because of its
+from an expired to an unexpired version of a package. mandatory signing policy as of 2005, Maven Central had
+On Maven Central, in only 26.7% of cases was there a a high quantity of signed artifacts throughout the period
+newer version of the package with an unexpired signature. we measured. In contrast, the other registries have had
+On PyPI, the number was 8.0%. Thus, upgrade paths are a low quantity of signed artifacts throughout. PyPI, for
+usually unavailable, suggesting that signature expiration is example, has had a historically decreasing quantity of signed
+not well managed in these ecosystems. This result may be artifacts until they were ultimately removed in 23 May 2023.
+confounded by abandoned packages. Hugging Face has also experienced a low signing rate across
+
+its lifespan. 6 Before late 2019, Docker Hub had a worse
+7.2. RQ2: Change in Signing Practices Over Time 6. The Hugging Face spikes in Figure 4 are due to the small number of
+
+commits in Jan 2017–Dec 2019 (only 1,266 commits in this period).
+
+Signature Quantity (%)
+
+2015-01
+2015-05
+2015-09
+2016-01
+2016-05
+2016-09
+2017-01
+2017-05
+2017-09
+2018-01
+2018-05
+2018-09
+2019-01
+2019-05
+2019-09
+2020-01
+2020-05
+2020-09
+2021-01
+2021-05
+2021-09
+2022-01
+2022-05
+2022-09
+2023-01
+2023-05
+2023-09
+
+
+
+Quality of Signatures Over Time PyPI Failure Modes Over Time
+100 70 Bad Signature
+
+Expired Signature
+60 Expired Public Key
+
+80 Missing Public Key
+50 Revoked Public Key
+
+Bad Public Key
+60 Maven Central 40
+
+Docker Hub
+40 HuggingFace 30
+
+PyPI
+PyPI PGP De-emphasis 20
+
+20 Docker Hub Attack
+Docker Hub Update 10
+SolarWinds Attack
+
+0 PyPI PGP Removal 0
+
+Month Month
+
+Figure 5. Quality of signed artifacts over time. X-axis shows time (monthly Figure 6. Failure modes of signatures on PyPI.
+increments). Y-axis shows percentage of signatures with good status.
+
+Maven Central Failure Modes Over Time
+signing rate than PyPI. From early 2020 through the middle
+of 2022, Docker experienced a notable increase in signing. 80
+
+Finding 4: Maven Central is the only registry with a Bad Signature
+60
+
+consistently high quantity of signed artifacts. Expired Signature
+Expired Public Key
+Missing Public Key
+
+40 Revoked Public Key
+7.2.2. Quality of Artifact Signatures. Failure Modes: In Bad Public Key
+
+Figure 5, we show the quality of signed artifacts over time. 20
+This figure shows how many of the signed artifacts in each
+registry were signed correctly in a given month. Within each 0
+registry, we observe no change in the quality over time.
+Between registries, we observe perfect quality in Docker
+Hub; high quality in Maven, lower and variable quality in Month
+PyPI, and spikes (due to the low number of signatures) of
+quality in Hugging Face. Figure 7. Failure modes of signatures on Maven Central.
+
+Next we consider the failure modes of signatures by
+registry. For PyPI, see Figure 6. There are several common
+failure modes. They vary in relative frequency and none Cryptographic Algorithms: For RSA keys on PyPI, Fig-
+dominates. For signing failure modes in Maven Central ure 8 shows the key lengths used over time. Note that 2048
+see Figure 7. The primary failure mode in our study period and 4096 bit keys trade off as the most common over time.
+is an expired public key. Revoked public keys have become 3072 bit keys are also used starting in mid-2018, but remain
+less of a concern over time and missing public keys have much less common than the other two key lengths.
+become more of a concern since the end of 2019. Bad public For RSA keys on Maven Central, Figure 9 shows the
+keys are also on the rise. Public key creation and distribution key lengths used over time. 2048 bit keys are initially the
+remains challenging. most common, but then drop to a similar level as the 4096
+
+We omit figures for Docker Hub and Hugging Face. bit keys. As in PyPI, 3072 bit keys start to be used in mid-
+Since Docker Hub signatures are either valid or invalid 2018. 3072 bit keys start to replace 2048 bit keys in late
+(and all we measured were valid), we cannot distinguish 2020 but are still less common than 2048 and 4096 bit keys.
+the failure modes. On Hugging Face, we cannot access the
+maintainers’ PGP keys, so we cannot analyze the failure Finding 6: 2048 and 4096 bit RSA keys have remained
+modes of signatures there. the most common key lengths in both Maven Central and
+
+PyPI between 01 Jan 2015 and 31 Dec 2023. On Maven
+Finding 5: Docker Hub is the only registry with perfect Central, 3072 bit keys started to replace 2048 bit keys in
+quality. For Maven Central and PyPI, the most common late 2020.
+failure modes are related to public keys in our study
+period. 7.2.3. No bias from new packages. Software package
+
+registries grow over time [88]. One consideration about our
+
+Signature Quality (% Good Signatures)
+
+2015-01
+2015-05
+2015-09
+2016-01
+2016-05
+2016-09
+2017-01
+2017-05
+2017-09
+2018-01
+2018-05
+2018-09
+2019-01
+2019-05
+2019-09
+2020-01
+2020-05
+2020-09
+2021-01
+2021-05
+2021-09
+2022-01
+2022-05
+2022-09
+2023-01
+2023-05
+2023-09
+
+Percent of Signatures Percent of Signatures
+
+2015-01 2015-01
+2015-05 2015-05
+2015-09 2015-09
+2016-01 2016-01
+2016-05 2016-05
+2016-09
+2017-01 2016-09
+2017-05 2017-01
+2017-09 2017-05
+2018-01 2017-09
+2018-05 2018-01
+2018-09 2018-05
+2019-01 2018-09
+2019-05 2019-01
+2019-09 2019-05
+2020-01 2019-09
+2020-05 2020-01
+2020-09 2020-05
+2021-01 2020-09
+2021-05 2021-01
+2021-09
+2022-01 2021-05
+2022-05 2021-09
+2022-09 2022-01
+2023-01 2022-05
+2023-05 2022-09
+2023-09 2023-01
+
+2023-05
+
+
+
+RSA Key Length on PyPI First vs. Non-First Artifacts on PyPI
+100
+
+8192 bytes 250000 Non-First Versions
+4608 bytes First Versions
+
+80 4096 bytes
+3072 bytes 200000
+2048 bytes
+
+60 1536 bytes
+1024 bytes 150000
+
+40 100000
+
+20 50000
+
+0 0
+
+Month Month
+
+Figure 8. RSA key length over time in PyPI. Figure 10. Number of first-artifacts and subsequent-artifacts of packages
+on PyPI.
+
+RSA Key Length on Maven Central
+100 TABLE 9. RESULTS OF T-TESTS FOR EACH HYPOTHESIS. PER EVENT,
+
+8192 bytes WE SHOW THE REGISTRY, ADJUSTED P-VALUE, AND EFFECT SIZE.
+4608 bytes *: STATISTICALLY SIGNIFICANT VALUE AT P < 0.01.
+
+80 4096 bytes
+3072 bytes
+2048 bytes Event Registry Adj. P-Val Effect Size
+
+60 1536 bytes PyPI De-emph PyPI 0.000* 0.228
+1024 bytes PyPI De-emph Maven Central 0.081 0.085
+
+PyPI De-emph Docker Hub 0.005* 0.149
+40
+
+DockerHub Update PyPI 0.971 0.100
+DockerHub Update Maven Central 0.971 0.066
+
+20 DockerHub Update Docker Hub 0.000* 0.392
+DockerHub Hack PyPI 0.999 0.170
+
+0 DockerHub Hack Maven Central 0.999 0.117
+DockerHub Hack Docker Hub 0.021 0.129
+SolarWinds PyPI 0.922 0.015
+
+Month SolarWinds Maven Central 0.021 0.144
+SolarWinds Docker Hub 0.021 0.122
+
+Figure 9. RSA key length over time in Maven Central.
+
+istries. We received a p-value of 0.000 and an F-statistic of
+longitudinal analysis is therefore whether the signing prac- 116135.82. This indicates a significant difference in signing
+tices of new packages dominates our measure in each time rates between the registries.
+window. To assess this possibility, Figure 10 shows the num- To determine which registries are different, we per-
+ber of first-versions (i.e., a new package) and subsequent- formed a Tukey test. The Tukey test performs pairwise
+versions (i.e., a new version of an existing package) of comparisons between the registries. In all cases except for
+packages on PyPI, binned monthly. We note that most of the the comparison between PyPI and Hugging Face (p-value of
+artifacts on PyPI are from subsequent-versions of packages. 0.000), we observed a significant difference in signing rates
+Maven Central, Docker Hub, and Hugging Face follow the (all p-values of 0.000). This indicates that the signing rates
+same trend. Hence, our results reflect the ongoing practice of all registries are significantly different from each other
+of existing maintainers rather than the recurring mistakes of except for PyPI and Hugging Face.
+new maintainers. We use these results, and a series of one-sided, two-way
+
+t-tests to evaluate our hypotheses. The summary of those t-
+7.3. RQ3: Influence of Incentive tests is shown in Table 9. Note that we do not include Hug-
+
+ging Face in our t-tests because it has a negligible quantity
+To test our hypotheses, we performed a one-way of signed artifacts during the time periods surrounding the
+
+ANOVA test, subsequent Tukey tests, and a selection of one- selected events.
+sided, two-way t-tests. The dependent variable is signature
+quantity, i.e., daily signing rate (percent of signed artifacts). 7.3.1. H1: Registry Policies. H1 predicts that registry poli-
+
+For the one-way ANOVA test, we compared the signing cies will either encourage or discourage signing adoption
+rates over the entire sample period between each of our reg- quantity. If this is the case, we would expect to see corre-
+
+Percent of RSA Signatures Percent of RSA Signatures
+
+2015-01 2015-01
+2015-05 2015-05
+2015-09 2015-09
+2016-01 2016-01
+2016-05 2016-05
+2016-09
+2017-01 2016-09
+2017-05 2017-01
+2017-09 2017-05
+2018-01 2017-09
+2018-05 2018-01
+2018-09 2018-05
+2019-01 2018-09
+2019-05 2019-01
+2019-09 2019-05
+2020-01 2019-09
+2020-05 2020-01
+2020-09 2020-05
+2021-01 2020-09
+2021-05 2021-01
+2021-09
+2022-01 2021-05
+2022-05 2021-09
+2022-09 2022-01
+2023-01 2022-05
+2023-05 2022-09
+2023-09 2023-01
+
+2023-05
+
+Artifacts Published per Month
+
+2015-01
+2015-05
+2015-09
+2016-01
+2016-05
+2016-09
+2017-01
+2017-05
+2017-09
+2018-01
+2018-05
+2018-09
+2019-01
+2019-05
+2019-09
+2020-01
+2020-05
+2020-09
+2021-01
+2021-05
+2021-09
+2022-01
+2022-05
+2022-09
+2023-01
+2023-05
+2023-09
+
+
+
+sponding changes in the measurements shown in Figure 4. registries. Table 5 lists several influential software supply
+For Maven Central and Hugging Face, we did not identify chain attacks and cybersecurity events. However, neither
+any changes in registry policies during the time period of preliminary visual analysis nor t-tests show any significant
+this study. We did, however, identify two policy changes changes in signing rate or quality after these events.
+in PyPI and one change in Docker Hub. These are shown We illustrate this with two cases. First, consider the
+in Table 5 and appear as vertical lines in Figure 4. registry-specific Docker Hub hack in April 2019. Although
+
+Three observations from this figure support hypothesis this attack was widely publicized and required over 100,000
+H1. On 22 Mar 2018, PyPI de-emphasized the use of PGP users to take action to secure their accounts, this attack
+by removing UI elements that encouraged signing. Our t- had little observable effect on the quantity of signatures
+tests show a statistically significant change (decrease) in on Docker Hub. The large increase in signing adoption on
+signing rates on PyPI after this event. We also measured an Docker Hub occurred at the start of 2020, about 9 months
+effect on Docker Hub, although the effect size is small and after the Docker Hub hack (and just after a registry-specific
+referring to Figure 4 there is no clear long-term trend. policy change, to the visibility of package signatures). This
+
+Second, Docker Hub’s quantity of signatures experi- implies that the attack did not even have an impact on the
+enced an appreciable increase at the start of 2020. This quantity of signatures of its victim registry. Other registries
+increase follows a provenance visibility related update to were not affected at all.
+Docker Hub, published on 05 Sep 2019.7 In this update, Second, the SolarWinds attack in December 2020 had
+Docker Hub increased tag visibility and updated security little effect on the quantity of signatures for any registry.
+scan summaries. This update may have encouraged main- This attack was one of the largest software supply chain
+tainers to sign their tags. Our t-tests show that the only attacks in history. It led to several government initiatives
+registry with a statistically significant change in signing rate to improve software supply chain security. However, So-
+after the Docker Hub update was Docker Hub. larWinds (and those government initiatives, e.g., the sub-
+
+Third, the notable difference in signing quantity between sequent executive order and NIST guidance) had no dis-
+Maven Central and the other registries suggests that manda- cernible effect on signing adoption in the studied registries.
+tory signing policies encourage adoption. Since Maven
+Central has a mandatory signing policy, we expected, and
+observe, a high quantity of signatures. Our ANOVA test, 7.3.4. H4: Startup Cost. H4 predicts that the first signature
+discussed earlier, found that the signing rate of Maven in a package will encourage subsequent signing. This is rela-
+Central is significantly different (higher) than the others. tively simple to measure. First, we determine the probability
+
+of an artifact having a signature in each registry. We then
+7.3.2. H2: Dedicated Tooling. H2 predicts that dedicated determine the probability of an artifact having a signature
+tooling will affect both the quantity and quality of signa- if one of the previous artifacts from the same package has
+tures. Since Docker Hub is the only registry in our study that been signed. We then compare these two probabilities to
+has dedicated tooling, H2 predicts that Docker Hub would determine if the first signature predicts subsequent signing.
+have a higher quantity and quality of signatures than the In Table 10, we show both of these probabilities for
+other registries. each of our four registries. All registries experience an
+
+We do not observe support for the quantity aspect of increase from the raw probability to the probability after
+H2. In Figure 4, we observe that Docker Hub has a lower the first signature. This suggests that overcoming the burden
+quantity of signatures than Maven Central and had lower of signing for the first time encourages subsequent signing.
+quantity of signatures than PyPI before 2020. This suggests The magnitude of this increase varies by registry. On Maven
+that the dedicated tooling on Docker Hub did not signifi- Central, we observe a small increase in signing probability,
+cantly impact the quantity of signatures. After all, between but this is expected since Maven Central has a mandatory
+01 Jan 2023 and 31 Dec 2023, Docker Hub’s signing rate signing policy. On the other platforms, the increase was
+was only 1.0%. ∼40x. These changes suggest that the initial burden of
+
+However, we do find support for the quality aspect of signing is a significant barrier to adoption.
+H2. In Figure 5, we observe that Docker Hub has perfect
+signature quality — something no other registry can achieve. TABLE 10. THE PROBABILITY OF AN ARTIFACT HAVING A SIGNATURE.
+This is because all signatures on Docker Hub must be RAW PROBABILITY DESCRIBES THE LIKELIHOOD OF ANY ARTIFACT IN
+
+created with through the DCT which, in itself, checks to THE REGISTRY HAVING A SIGNATURE. AFTER 1st SIGNATURE
+DESCRIBES THE PROBABILITY THAT AN ARTIFACT WILL BE SIGNED IF
+
+make sure signatures are created correctly. ONE OF THE PREVIOUS ARTIFACTS FROM THE SAME PACKAGE HAS
+BEEN SIGNED.
+
+7.3.3. H3: Cybersecurity Events. H3 predicts that cyberse- Registry Name Raw Probability After 1st Signature
+curity events will encourage signing adoption quantity and
+quality. Since these events are not specific to any registry, PyPI 1.25% 42.60%
+we would expect to see corresponding changes in the mea- Maven Central 94.14% 96.00%
+
+Docker Hub 2.47% 88.30%
+surements shown in Figure 4 and Figure 5 from multiple Hugging Face 0.07% 15.10%
+
+7. See https://docs.docker.com/docker-hub/release-notes/#2019-09-05.
+
+
+
+8. Discussion that have been shared through other means. In addition, our
+insights into failure modes were limited by the data made
+
+We highlight three points for discussion. available by the signing infrastructure of our target registries.
+First, our findings suggest that the long line of liter- Internal: We evaluated a theory of incentive-based soft-
+
+ature on the usability of signing tools (§3) may benefit ware signing adoption based on several hypotheses. Due to
+from extending its perspective from an individual view to the difficulty of conducting controlled experiments of this
+ecosystem-level considerations. Two registries, Maven and theory, we used a quasi-experiment, and assumed no uncon-
+PyPI, use the same PGP-based signing method. We observe trolled confounding factors. Among Maven Central, PyPI,
+significant variations in signing adoption between these and Docker Hub, we have no reason to believe there would
+two registries, both in signature quantity and in signature be such factors. In Hugging Face, there may be confounding
+quality/failure modes. Our answers to RQ3 suggest that factors related to the nature of the platform itself. As noted
+the registry policies have a substantial effect on signing by Jiang et al., Hugging Face is characterized by a “research
+adoption, regardless of the available tooling. However, we to practice pipeline” more than traditional software package
+acknowledge that our data do substantiate their concern registries are [23]. Researchers have little incentive to follow
+about signature quality — our data expose major issues secure engineering practices. This difference could comprise
+with signature quality in both the Maven and the PyPI an uncontrolled confounding factor. However, Hugging Face
+registries, and that the dedicated tooling available in Docker had little variation in signing quantity and none of our main
+Hub appears to eliminate the issues of signing quality. results relied on Hugging Face phenomena.
+
+Second, our findings suggest that registry operators con- External: All empirical studies are limited in general-
+trol the largest incentives for software signing. Mandating izability by the subjects they study. Our work examines
+signatures has not apparently decreased the popularity of four of the most popular software package registries, across
+Maven — we recommend that other registries do so. Reg- three kinds of packages (traditional software, Docker con-
+istry operators can also learn from the success of Docker tainers, and machine learning models). Our results thus
+Hub, whose dedicated tooling results in perfect signing qual- have some generalizability. However, our results may not
+ity. No registry currently mandates signatures and provides generalize to contexts with substantially different properties,
+dedicated tooling. Our results predict that the combination e.g., registries more influenced by government policy or
+would result in high signature quantity and quality. more dominated by individual organizations.
+
+Third, we were disturbed at the non-impact of signing
+events — software supply chain attacks, government orders,
+and industry standards. Good engineering practice (not to 10. Future Work
+mention engineering codes of ethics) calls for engineers to
+recognize and respond to known failure modes. Our contrary We suggest several directions for future research.
+results motivate continued research into engineering ethics Further Diversification of Registries: Our findings are
+and a failure-aware software development lifecycle [99]. provocative, but we recommend diversifying the types of
+
+ecosystems under study. Further work could go beyond
+9. Threats to Validity open-source registries to include commercial and proprietary
+
+registries (e.g., app stores), and ecosystems implementing
+We distinguish three kinds of threats: construct, internal, different forms of signing solutions. This approach will
+
+and external. facilitate a comprehensive exploration of other factors, in-
+centives and cost trade-offs that influence the adoption of
+
+Construct: Our study operationalized several constructs. software signing for these types of ecosystems.
+We defined signature adoption in terms of quantity (propor-
+tion) and quality (frequency of no failure). We believe our Incorporating Human Factors: Our approach is grounded
+notion of signature quantity is unobjectionable. However, in a theory of software signing based in incentives. Qual-
+signature quality is somewhat subjective. We made four itative data — e.g., surveys and interviews of engineers
+assumptions that may bias our results: (1) We defined quality in the registries of interest — would shed light on the
+based on failure modes derived from the error cases of GPG; relative weight of the factors we identified. Such studies
+(2) We considered expired and revoked keys as failures even could expose new factors for quantitative evaluation.
+if the keys were valid at the time of signing; (3) We reported Identifying Machine Learning (ML) Software and Pre-
+the cryptographic algorithm and key size for signatures on Trained Model Signing requirements: Signing adoption rates
+PyPI and Maven Central but did not include this as a factor in the Hugging Face registry are much lower than in all
+in quality; and (4) We relied on the correctness of specific other studied registries. We recommend research on signing
+(albeit widely used) tools to measure the signatures. practices in this context. The issue might be an odd signing
+
+We acknowledge that the limitations of our data sources target — commits rather than packages. The challenge might
+may potentially impact the robustness of our results. Our be more fundamental, clarifying the nature of effective
+reliance on third party metadata (i.e., ecosyste.ms and Big- signatures for ML models and training regimes [100].
+Query) may introduce errors and our key discovery method- Apply the results: As noted in §8, registry operators appear
+ology may fail to find keys that exist on small websites or to have a strong influence on software signing quantity and
+
+
+
+quality. Partnering with registry operators, researchers can [7] Catalin Cimpanu, “Microsoft, fireeye confirm solarwinds
+apply our results to empirically validate them. supply chain attack,” https://www.zdnet.com/article/microsoft-
+
+fireeye-confirm-solarwinds-supply-chain-attack/. [Online]. Avail-
+able: https://www.zdnet.com/article/microsoft-fireeye-confirm-
+
+11. Conclusion solarwinds-supply-chain-attack/
+[8] Sonatype, “State of the Software Supply Chain,” Sonatype, Tech.
+
+In this study, we assessed signing in four public software Rep. 8th Annual, 2022, https://www.sonatype.com/state-of-the-
+package registries (PyPI, Maven Central, Docker Hub, and software-supply-chain/open-source-supply-demand-security.
+Hugging Face). We measured signature adoption (quantity [9] N. Zahan, P. Kanakiya, B. Hambleton, S. Shohan, and L. Williams,
+and quality). We found that, aside from Maven Central, the “OpenSSF Scorecard: On the Path Toward Ecosystem-wide Auto-
+quantity of signatures in package registries is low. Aside mated Security Metrics,” Jan. 2023, http://arxiv.org/abs/2208.03412.
+
+from Docker Hub, the quality of signatures in package [10] N. Zahan, S. Shohan, D. Harris, and L. Williams, “Do software secu-
+registries is low. To explain these observations, we pro- rity practices yield fewer vulnerabilities?” in 2023 IEEE/ACM 45th
+
+posed and evaluated an incentive-basd theory explaining International Conf. on Software Engineering: Software Engineering
+in Practice (ICSE-SEIP). IEEE, 2023, pp. 292–303.
+
+maintainer’s decisions to adopt signatures. We used quasi-
+experiments to test four hypotheses. We found that incen- [11] K. Serebryany, “Oss-fuzz — Google’s continuous fuzzing
+
+service for open source software,” 2017. [Online].
+tives do influence signing adoption, and some incentives are Available: https://www.usenix.org/conference/usenixsecurity17/
+more influential than others. Registry policies and startup technical-sessions/presentation/serebryany
+costs seem to have the largest impact on signing adoption. [12] N. Luo, T. Antonopoulos, W. R. Harris, R. Piskac, E. Tromer, and
+Cybersecurity events do not appear to have a significant X. Wang, “Proving unsat in zero knowledge,” in Proceedings of the
+impact on signing adoption. ACM SIGSAC Conf. on Computer and Communications Security
+
+We hope that our results will encourage the software (CCS), 2022, p. 2203–2217.
+
+engineering community to improve their software signing [13] M. Balliu, B. Baudry, S. Bobadilla, M. Ekstedt, M. Monperrus,
+efforts, enhancing the overall security of software systems. J. Ron, A. Sharma, G. Skoglund, C. Soto-Valero, and M. Wittlinger,
+
+“Challenges of producing software bill of materials for java,” arXiv
+Our findings suggest specific incentives that could signifi- preprint arXiv:2303.11102, 2023.
+cantly improve software signing adoption rates. [14] N. Zahan, E. Lin, M. Tamanna, W. Enck, and L. Williams, “Software
+
+bills of materials are required. are we there yet?” IEEE Security &
+12. Data Availability Privacy, vol. 21, no. 2, pp. 82–88, 2023.
+
+[15] T. Winters, T. Manshreck, and H. Wright, Software engineering
+The tools used to collect and analyze the data are at Google: lessons learned from programming over time, first edi-
+
+available at https://github.com/PurdueDualityLab/signature- tion ed. Beijing [China]: O’Reilly Media, 2020.
+
+adoption. This repository also contains the reported data in [16] T. K. Kuppusamy, S. Torres-Arias, V. Diaz, and J. Cappos, “Diplo-
+a relational database snapshot. mat: Using delegations to protect community repositories,” in
+
+USENIX Symposium on Networked Systems Design and Implemen-
+tation (NSDI), Santa Clara, CA, 2016, pp. 567–581.
+
+Acknowledgments [17] W. Woodruff, “PGP signatures on PyPI: worse than useless,”
+May 2023, https://blog.yossarian.net/2023/05/21/PGP-signatures-
+
+This work was supported by Google, Cisco, and NSF on-PyPI-worse-than-useless.
+award #2229703. S. Joshi helped with the statistical analysis. [18] M. Felderer and G. H. Travassos, Eds., Contemporary empirical
+
+methods in software engineering. Cham: Springer, 2020.
+
+References [19] W. Jiang, N. Synovic, M. Hyatt, T. R. Schorlemmer, R. Sethi,
+Y.-H. Lu, G. K. Thiruvathukal, and J. C. Davis, “An empirical
+study of pre-trained model reuse in the hugging face deep learning
+
+[1] G. 18F, “18F: Digital service delivery | Open source policy,” https: model registry,” in IEEE/ACM 45th International Conf. on Software
+//18f.gsa.gov/open-source-policy/. Engineering (ICSE’23), 2023.
+
+[2] D. of Defense, “Open Source Software (OSS) in the Department of [20] SourceForge, “Compare, Download & Develop Open Source &
+Defense ( DoD),” May 2003. Business Software - SourceForge,” https://sourceforge.net/.
+
+[3] Synopsys, “2023 OSSRA Report,” Synopsys, Tech. Rep., 2023, [21] GitLab, “The DevSecOps Platform,” https://about.gitlab.com/.
+https://www.synopsys.com/software-integrity/engage/ossra/rep-
+ossra-2023-pdf. [22] “GitHub Packages,” https://github.com/features/packages, accessed:
+
+[4] C. Okafor, T. R. Schorlemmer, S. Torres-Arias, and J. C. Davis, 2023-12-06.
+“Sok: Analysis of software supply chain security by establishing [23] W. Jiang, N. Synovic, R. Sethi, A. Indarapu, M. Hyatt, T. R. Schor-
+secure design properties,” in The ACM Workshop on Software Sup- lemmer et al., “An empirical study of artifacts and security risks
+ply Chain Offensive Research and Ecosystem Defenses (SCORED), in the pre-trained model supply chain,” in The ACM Workshop on
+2022, p. 15–24. Software Supply Chain Offensive Research and Ecosystem Defenses
+
+[5] FireEye, “Highly evasive attacker leverages solarwinds supply chain (SCORED), 2022, p. 105–114.
+to compromise multiple global victims with sunburst backdoor,” [24] M. Zimmermann, C.-A. Staicu, C. Tenny, and M. Pradel, “Small
+https://www.fireeye.com/blog/threat-research/2020/12/evasive- world with high risks: A study of security threats in the npm
+attacker-leverages-solarwinds-supply-chain-compromises-with- ecosystem,” in USENIX Security, 2019, pp. 995–1010.
+sunburst-backdoor.html. [25] W. Enck and L. Williams, “Top 5 challenges in software supply
+
+[6] Microsoft Security Response Center, “Customer guidance on recent chain security: Observations from 30 industry and government or-
+nation-state cyber attacks,” https://msrc-blog.microsoft.com/2020/ ganizations,” IEEE Sec. & Privacy, vol. 20, no. 2, pp. 96–100, 2022.
+12/13/customer-guidance-on-recent-nation-state-cyber-attacks/.
+
+
+
+[26] C. Okafor, T. R. Schorlemmer, S. Torres-Arias, and J. C. Davis, [43] S. T. A. Group, “Software Supply Chain Best Practices,” Cloud
+“SoK: Analysis of Software Supply Chain Security by Establishing Native Computing Foundation, Tech. Rep., May 2021. [Online].
+Secure Design Properties,” in ACM Workshop on Software Supply Available: https://project.linuxfoundation.org/hubfs/CNCF SSCP
+Chain Offens. Res. and Ecosys. Defenses, 2022, pp. 15–24. v1.pdf
+
+[27] D. Kumar, Z. Ma, Z. Durumeric, A. Mirian, J. Mason, J. A. [44] “Supply-chain Levels for Software Artifacts.” [Online]. Available:
+Halderman, and M. Bailey, “Security challenges in an increasingly https://slsa.dev/
+tangled web,” in Proceedings of the 26th International Conf. on
+World Wide Web, 2017, pp. 677–684. [45] D. Cooper, A. Regenscheid, M. Souppaya, C. Bean, M. Boyle,
+
+D. Cooley, and M. Jenkins, “Security considerations for code
+[28] Y. Wang, B. Chen, K. Huang, B. Shi, C. Xu, X. Peng, Y. Wu, signing,” National Institute of Standards and Technology, Ft.
+
+and Y. Liu, “An empirical study of usages, updates and risks of George G. Meade, Maryland, NIST Cybersecurity White Paper,
+third-party libraries in java projects,” in 2020 IEEE International January 2018. [Online]. Available: https://nvlpubs.nist.gov/nistpubs/
+Conf. on Software Maintenance and Evolution (ICSME). Adelaide, CSWP/NIST.CSWP.01262018.pdf
+Australia: IEEE, Sep. 2020, p. 35–45. [Online]. Available:
+https://ieeexplore.ieee.org/document/9240619/ [46] Cybersecurity and Infrastructure Security Agency, “Defending
+
+against software supply chain attacks,” Cybersecurity and Infras-
+[29] C. R. de Souza and D. F. Redmiles, “An empirical study of software tructure Security Agency, Technical Report, April 2021. [Online].
+
+developers’ management of dependencies and changes,” in Interna- Available: https://www.cisa.gov/sites/default/files/publications/
+tional Conf. on Software Engineering (ICSE), 2008, pp. 241–250. defending against software supply chain attacks 508 1.pdf
+
+[30] I. Pashchenko, D.-L. Vu, and F. Massacci, “A qualitative study [47] T. P. o. t. G. Project, “The GNU Privacy Guard,” Apr.
+of dependency management and its security implications,” in Pro- 2023, publisher: The GnuPG Project. [Online]. Available: https:
+ceedings of the 2020 ACM SIGSAC conference on computer and //gnupg.org/
+communications security, 2020, pp. 1513–1531.
+
+[48] N. K. Gopalakrishna, D. Anandayuvaraj, A. Detti, F. L. Bland et al.,
+[31] A. S. Jadhav and R. M. Sonar, “Evaluating and selecting software “”if security is required”: Engineering and security practices for
+
+packages: A review,” Information and software technology, vol. 51, machine learning-based iot devices,” in Internat’l. Workshop on
+no. 3, pp. 555–563, 2009. Software Eng. Res. and Practice for the IoT, 2022, pp. 1–8.
+
+[32] ——, “Framework for evaluation and selection of the software
+packages: A hybrid knowledge based system approach,” Journal of [49] N. Meng, S. Nagy, D. Yao, W. Zhuang, and G. A. Argoty, “Secure
+Systems and Software, vol. 84, no. 8, pp. 1394–1407, 2011. coding practices in java: Challenges and vulnerabilities,” in Inter-
+
+national Conf. on Software Engineering, 2018, pp. 372–383.
+[33] A. Decan, T. Mens, and P. Grosjean, “An empirical comparison of
+
+dependency network evolution in seven software packaging ecosys- [50] M. Chen, F. Fischer, N. Meng, X. Wang, and J. Grossklags, “How
+tems,” Empirical Software Engineering, vol. 24, pp. 381–416, 2019. reliable is the crowdsourced knowledge of security implementa-
+
+tion?” in 2019 IEEE/ACM 41st International Conf. on Software
+[34] J. Ghofrani, P. Heravi, K. A. Babaei, and M. D. Soorati, “Trust Engineering (ICSE). IEEE, 2019, pp. 536–547.
+
+challenges in reusing open source software: An interview-based
+initial study,” in Proceedings of the 26th ACM International Systems [51] A. Whitten and J. D. Tygar, “Why Johnny can’t encrypt: a usability
+and Software Product Line Conf.-Volume B, 2022, pp. 110–116. evaluation of PGP 5.0,” in USENIX Security Symposium, 1999, p. 14.
+
+[35] D.-L. Vu, F. Massacci, I. Pashchenko, H. Plate, and A. Sabetta, [52] S. Ruoti, J. Andersen, D. Zappala, and K. Seamons, “Why johnny
+“LastPyMile: identifying the discrepancy between sources and pack- still, still can’t encrypt: Evaluating the usability of a modern pgp
+ages,” in The ACM Joint Meeting on European Software Engi- client,” arXiv, 2016, https://arxiv.org/abs/1510.08555.
+neering Conf. and Symposium on the Foundations of Software [53] Gillian Andrews, “Usability Report: Proposed Mailpile Features.”
+Engineering (ESEC/FSE), 2021, pp. 780–792. OpenITP, December 2014, https://openitp.org/field-notes/user-tests-
+
+[36] S. Torres-Arias, H. Afzali, T. K. Kuppusamy, R. Curtmola, and mailpile-features.html Accessed on 27/06/2023.
+J. Cappos, “in-toto: Providing farm-to-table guarantees for bits and [54] C. Braz and J.-M. Robert, “Security and usability: the case of the
+bytes,” in USENIX Security Symposium, 2019, pp. 1393–1410. user authentication methods,” in The 18th Conf. on l’Interaction
+
+[37] C. Lamb and S. Zacchiroli, “Reproducible Builds: Increasing the Homme -Machine (IHM), 2006, pp. 199–203, https://dl.acm.org/doi/
+Integrity of Software Supply Chains,” IEEE Software, vol. 39, no. 2, 10.1145/1132736.1132768.
+pp. 62–70, Mar. 2022, conf. Name: IEEE Software. [55] S. Ruoti, N. Kim, B. Burgon, T. van der Horst, and K. Seamons,
+
+[38] J. Hejderup, “On the Use of Tests for Software Supply Chain “Confused Johnny: when automatic encryption leads to confusion
+Threats,” in ACM Workshop on Software Supply Chain Offensive and mistakes,” in Proceedings of the Ninth Symposium on Usable
+Research and Ecosystem Defenses (SCORED), 2022, pp. 47–49. Privacy and Security (SOUPS). ACM, 2013, pp. 1–12.
+
+[39] G. Benedetti, “Automatic Security Assessment of GitHub Actions [56] A. Reuter, K. Boudaoud, M. Winckler, A. Abdelmaksoud, and
+Workflows,” Los Angeles, 2022, https://dl.acm.org/doi/abs/10.1145/ W. Lemrazzeq, “Secure Email - A Usability Study,” in Financial
+3560835.3564554. Cryptography and Data Security, ser. Lecture Notes in Computer
+
+[40] “The Minimum Elements For a Software Bill of Materials ( SBOM) Science, M. Bernhard, A. Bracciali, L. J. Camp, S. Matsuo, A. Mau-
+| National Telecommunications and Information Administration.” rushat, P. B. Rønne, and M. Sala, Eds. Cham: Springer International
+[Online]. Available: https://www.ntia.gov/report/2021/minimum- Publishing, 2020, pp. 36–46.
+elements-software-bill-materials-sbom [57] S. Fahl, M. Harbach, T. Muders, M. Smith, and U. Sander, “Helping
+
+[41] M. Ohm, A. Sykosch, and M. Meier, “Towards detection of Johnny 2.0 to encrypt his Facebook conversations,” in Symposium
+software supply chain attacks by forensic artifacts,” in Proceedings on Usable Privacy and Security (SOUPS), 2012, pp. 1–17.
+of the 15th International Conf. on Availability, Reliability and [58] S. Ruoti, J. Andersen, T. Hendershot, D. Zappala, and K. Seamons,
+Security, ser. ARES ’20. New York, NY, USA: Association for “Private Webmail 2.0: Simple and Easy-to-Use Secure Email ,” Oct.
+Computing Machinery, Aug. 2020, pp. 1–6. [Online]. Available: 2015, http://arxiv.org/abs/1510.08435.
+https://doi.org/10.1145/3407023.3409183
+
+[59] E. Atwater, C. Bocovich, U. Hengartner, E. Lank, and I. Goldberg,
+[42] R. Shirey, “Internet security glossary, version 2,” https://www.rfc- “Leading Johnny to water: designing for usability and trust,” in
+
+editor.org/rfc/rfc4949.html, Network Working Group, RFC 4949, USENIX Conf. on Usable Privacy and Security (SOUPS), 2015.
+August 2007, fYI: 36. Obsoletes: 2828. [Online]. Available:
+https://www.rfc-editor.org/rfc/rfc4949.html
+
+
+
+[60] Latacora, “The PGP Problem,” Jul. 2019, https://latacora.micro.blog/ [79] C. Wohlin, Experimentation in software engineering. New York:
+2019/07/16/the-pgp-problem.html. Springer, 2012.
+
+[61] M. Green, “What’s the matter with PGP?” Aug. 2014, [80] J. M. Wooldridge, Introductory econometrics: a modern approach,
+https://blog.cryptographyengineering.com/2014/08/13/whats- 5th ed. Mason, OH: South-Western Cengage Learning, 2013.
+matter-with-pgp/. [81] B. D. Meyer, “Natural and Quasi-Experiments in Economics,” Jour-
+
+[62] R. Chandramouli, M. Iorga, and S. Chokhani, “Cryptographic key nal of Business & Economic Statistics, vol. 13, no. 2, pp. 151–161,
+management issues and challenges in cloud services,” Secure Cloud 1995, https://www.jstor.org/stable/1392369.
+Computing, pp. 1–30, 2013. [82] C. Bogart, C. Kästner, J. Herbsleb, and F. Thung, “When and how
+
+[63] D. Cooper, Andrew Regenscheid, Murugiah Souppaya, Christo- to make breaking changes: Policies and practices in 18 open source
+pher Bean, Mike Boyle, Dorothy Cooley, and Michael Jenk- software ecosystems,” ACM Trans. Softw. Eng. Methodol., vol. 30,
+ins, “Security Considerations for Code Signing,” NIST Cy- no. 4, jul 2021. [Online]. Available: https://doi.org/10.1145/3447245
+bersecurity White Paper, Jan. 2018, https://csrc.nist.rip/external/ [83] S. Cass, “The top programming languages 2023,” https:
+nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.01262018.pdf. //spectrum.ieee.org/the-top-programming-languages-2023, August
+
+[64] Z. Newman, J. S. Meyers, and S. Torres-Arias, “Sigstore: Software 2023, accessed: 2023-12-07. [Online]. Available: https:
+Signing for Everybody,” in The ACM SIGSAC Conf. on Computer //spectrum.ieee.org/the-top-programming-languages-2023
+and Communications Security (CCS), 2022. [84] C. Pahl, A. Brogi, J. Soldani, and P. Jamshidi, “Cloud container
+
+[65] M. S. Melara, A. Blankstein, J. Bonneau, E. W. Felten, and M. J. technologies: a state-of-the-art review,” IEEE Transactions on Cloud
+Freedman, “Coniks: Bringing key transparency to end users,” in 24th Computing, vol. 7, no. 3, pp. 677–692, 2017.
+USENIX Security Symposium, 2015, pp. 383–398. [85] PyPI, “The python package index,” 2024, https://pypi.org/.
+
+[66] H. Malvai, L. Kokoris-Kogias, A. Sonnino, E. Ghosh, E. Oztürk,
+K. Lewi, and S. Lawlor, “Parakeet: Practical key transparency for [86] D. Stufft, “PGP signatures are not displayed | Issue #3356,”
+end-to-end encrypted messaging,” Cryptology ePrint Archive, 2023. Mar. 2018. [Online]. Available: https://github.com/pypi/warehouse/
+
+issues/3356
+[67] E. Heftrig, H. Shulman, and M. Waidner, “Poster: The unintended
+
+consequences of algorithm agility in dnssec,” in The SIGSAC Conf. [87] ——, “Removing PGP from PyPI - The Python Package Index,”
+on Computer and Communications Security (CCS), 2022. May 2023. [Online]. Available: https://blog.pypi.org/posts/2023-05-
+
+23-removing-pgp/
+[68] A. Bellissimo, J. Burgess, and K. Fu, “Secure software updates:
+
+Disappointments and new challenges,” in USENIX Workshop on Hot [88] Open Collective, “Ecosyste.ms,” 2024, https://ecosyste.ms/.
+Topics in Security (HotSec), 2006. [89] S. D. Relations, “PGP vs. sigstore: A Recap of the Match at Maven
+
+[69] K. Merrill, Z. Newman, S. Torres-Arias, and K. Sollins, “Sper- Central,” 2023. [Online]. Available: https://blog.sonatype.com/pgp-
+anza: Usable, privacy-friendly software signing,” May 2023, http: vs.-sigstore-a-recap-of-the-match-at-maven-central
+//arxiv.org/abs/2305.06463. [90] Docker, “Content trust in Docker,” 0200, https://docs.docker.com/
+
+[70] OpenBSD, “signify: Securing openbsd from us to you,” ”https:// engine/security/trust/. [Online]. Available: https://docs.docker.com/
+www.openbsd.org/papers/bsdcan-signify.html”. engine/security/trust/
+
+[71] D. C. Brown, “Digital nudges for encouraging developer behaviors,” [91] D. Lorenc, “Cosign 1.0! - Sigstore Blog,” Jul. 2021, https:
+Ph.D. dissertation, 2021, copyright - Database copyright ProQuest //blog.sigstore.dev/cosign-1-0-e82f006f7bc4/. [Online]. Available:
+LLC; ProQuest does not claim copyright in the individual https://blog.sigstore.dev/cosign-1-0-e82f006f7bc4/
+underlying works; Last updated - 2023-07-19. [Online]. Avail- [92] Hugging Face, “Hugging face,” 2024, https://huggingface.co/.
+able: https://www.proquest.com/dissertations-theses/digital-nudges-
+encouraging-developer-behaviors/docview/2566242524/se-2 [93] Hugging Face, “Security,” 2023. [Online]. Available: https:
+
+//huggingface.co/docs/hub/security
+[72] E. L. Deci, “Effects of externally mediated rewards on intrinsic
+
+motivation,” Journal of Personality and Social Psychology, vol. 18, [94] PyPA, “Analyzing pypi package downloads,” 2024,
+no. 1, pp. 105–115, 1971. https://packaging.python.org/en/latest/guides/analyzing-pypi-
+
+package-downloads/#public-dataset.
+[73] M. Baddeley, Behavioural Economics: A Very Short Introduction.
+
+Oxford University Press, 01 2017. [Online]. Available: https: [95] “Notice,” Oct. 2023, original-date: 2015-06-19T20:07:53Z. [Online].
+//doi.org/10.1093/actrade/9780198754992.001.0001 Available: https://github.com/notaryproject/notary
+
+[74] E. Kamenica, “Behavioral economics and psychology of incentives,” [96] Sonatype, “Working with pgp signatures,” 2024, https:
+Annual Review of Economics, vol. 4, no. 1, pp. 427– //central.sonatype.org/publish/requirements/gpg/#signing-a-file.
+452, 2012. [Online]. Available: https://doi.org/10.1146/annurev- [97] H. Ferraiolo and A. Regenscheid, Cryptographic Algorithms and
+economics-080511-110909 Key Sizes for Personal Identity Verification, Sep. 2023. [Online].
+
+[75] U. Gneezy and A. Rustichini, “Pay enough or don’t pay at all,” Available: http://dx.doi.org/10.6028/NIST.SP.800-78-5.ipd
+The Quarterly Journal of Economics, vol. 115, no. 3, pp. 791–810,
+2000. [Online]. Available: http://www.jstor.org/stable/2586896 [98] Hugging Face, “Location of public gpg keys,” 2024, https://
+
+discuss.huggingface.co/t/location-of-public-gpg-keys/62915.
+[76] R. M. Titmuss, The gift relationship (reissue): From human blood
+
+to social policy, 1st ed. Bristol University Press, 2018. [Online]. [99] D. Anandayuvaraj and J. C. Davis, “Reflecting on recurring failures
+Available: http://www.jstor.org/stable/j.ctv6zdcmh in iot development,” in The 37th IEEE/ACM International Conf. on
+
+Automated Software Engineering, 2022, pp. 1–5.
+[77] D. Gotterbarn, K. Miller, and S. Rogerson, “Software engineering
+
+code of ethics,” Comm. of the ACM, vol. 40, no. 11, 1997. [100] J. C. Davis, P. Jajal, W. Jiang, T. R. Schorlemmer, N. Synovic, and
+G. K. Thiruvathukal, “Reusing deep learning models: Challenges
+
+[78] D. K. Remler and G. G. Van Ryzin, Research methods in practice: and directions in software engineering,” in Proceedings of the IEEE
+strategies for description and causation, second edition ed. Los John Vincent Atanasoff Symposium on Modern Computing, 2023.
+Angeles: SAGE, 2015.
+
+
+
+Appendix A. The findings are interesting, showing a large amount of
+Meta-Review variance across ecosystems. Likewise, rigid adherence to
+
+signing practices is also shown not to be a security panacea.
+The following meta-review was prepared by the program The data and corresponding insights struck the PC as a
+
+committee for the 2024 IEEE Symposium on Security and valuable contribution to aid understanding and direct future
+Privacy (S&P) as part of the review process as detailed in research.
+the call for papers.
+
+A.4. Noteworthy Concerns
+A.1. Summary
+
+1) While any empirical study will have limitations, the PC
+Code that can be authenticated to its source is a nec- had concerns with the approach taken to classify public
+
+essary prerequisite to a secure software supply chain. This keys as valid. Best practices recommend that keys are
+paper looks at package signing practices in PyPI, Maven, rotated. The validity of a key seems most important at
+Hugging Face, and DockerHub, and evaluates the quality the time when a commit is performed, not years later.
+and quantity of the signatures found there. The authors then 2) The paper studies events that may have influenced
+compare the ecosystems to argue that only a mandate will signature adoption. It reports correlative, not causative,
+lead to universal signing and ecosystems with easy-to-use evidence for the influence of factors. Understanding
+tooling will lead to more voluntary signing. causation requires further study.
+
+3) The paper excludes Hugging Face models that require
+A.2. Scientific Contributions assenting to a Terms of Service agreement. The PC
+
+wonders whether models with a ToS are more likely to
+• Provides a New Data Set For Public Use be professionally developed and possibly more likely
+• Addresses a Long-Known Issue to be signed.
+• Provides a Valuable Step Forward in an Established
+
+Field Appendix B.
+A.3. Reasons for Acceptance Response to the Meta-Review
+
+The paper assimilates significant data from multiple We take no issue with the meta-review. We appreciate
+ecosystems that helps to shed light on signing practices. the holistic critique.

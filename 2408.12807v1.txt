@@ -1,0 +1,1151 @@
+﻿Code Ownership: The Principles, Differences, and
+Their Associations with Software Quality
+
+Patanamon Thongtanunam Chakkrit Tantithamthavorn
+The University of Melbourne, Australia. Monash University, Australia.
+
+patanamon.t@unimelb.edu.au chakkrit@monash.edu
+
+Abstract—Code ownership–an approximation of the degree of intuition for the commit-based approach is the more frequent
+ownership of a software component—is one of the important the code changes (i.e., commits) made by a developer to a file,
+software measures used in quality improvement plans. However, the higher ownership value the developer should have [8, 11].
+prior studies proposed different variants of code ownership
+approximations. Yet, little is known about the difference in code On the other hand, the intuition for the line-based approach is
+ownership approximations and their association with software the larger the proportion of code lines in a file authored by
+quality. In this paper, we investigate the differences in the com- a developer, the higher ownership value the developer should
+monly used ownership approximations (i.e., commit-based and have [39].
+line-based) in terms of the set of developers, the approximated Since the commit-based and line-based code ownership
+code ownership values, and the expertise level. Then, we analyze
+the association of each code ownership approximation with the approximations use a different granularity of information (i.e.,
+defect-proneness. Through an empirical study of 25 releases commits or files), they might produce a different set of
+that span real-world open-source software systems, we find that owners. For example, a developer who contributes a large
+commit-based and line-based ownership approximations produce proportion of code in one change may be considered as a
+different sets of developers, different code ownership values, and major developer when using the line-based approximation but
+different sets of major developers. In addition, we find that
+the commit-based approximation has a stronger association with may be considered as a minor developer when using the
+software quality than the line-based approximation. Based on our commit-based approximation. However, there exist no studies
+analysis, we recommend line-based code ownership be used for investigating the difference in code ownership approximations.
+accountability purposes (e.g., authorship attribution, intellectual Furthermore, prior work also found that code ownership values
+property), while commit-based code ownership should be used are associated with defect-proneness [8, 11, 39]. However,
+for rapid bug-fixing and charting quality improvement plans.
+
+Index Terms—Code Ownership Approximation, Software there exist no studies investigating which code ownership
+Quality Assurance. approximations should be considered when developing defect
+
+prediction models for charting software quality improvement
+I. I plans. Thus, a lack of understanding of the difference in code
+
+NTRODUCTION
+ownership approximations could lead to incorrect ownership
+
+Code ownership is used to establish a chain of responsibility attribution, misleading owner identification, and suboptimal
+for software artifacts. In large-scale software organizations, a quality improvement plans.
+large number of software components are developed. Thus, In this paper, we investigate the differences in code own-
+code ownership [1, 29] is highly important for software- ership approximations along three dimensions, i.e., the set of
+intensive organizations (e.g., Facebook [1], Microsoft [8, 11]) developers, the approximated code ownership values, and the
+to identify a responsible (or suitable) developer of a given expertise level, and investigate their associations with software
+piece of source code as well as to attribute copyrights and quality. Through an empirical study of 25 releases that span
+Intellectual Properties (IP) to the right owner. Prior studies seven large-scale software systems, we address the following
+showed that code ownership can be used to recommend de- research questions.
+velopers who should fix a bug [1, 4, 44] or who should review RQ1 To what degree do sets of developers identified by
+a patch [3, 42]. In addition, prior studies also suggested that the commit-based and line-based approaches differ?
+code ownership should be considered in a quality management Summary: Only 0% to 40% of developers can be iden-
+plan to mitigate the risk of having software defects [8, 11, 48]. tified by both commit-based and line-based approaches,
+
+At the heart of code ownership management is the op- indicating these approaches do not identify the same
+erationalization (approximations) of code ownership. Prior set of developers. A substantial proportion of develop-
+studies have proposed variants of code ownership approxima- ers can be missed when using one of the ownership
+tions [8, 11, 39]. Two conventional approximations are (1) the approximation approaches.
+commit-based approach of Bird et al. [8, 11] and (2) the line- RQ2 Do the commit-based and line-based approximations
+based approach of Rahman and Devanbu [39]. These two code provide consistent estimates of ownership values?
+ownership approximations are often used in empirical studies Summary: For the developers who can be commonly
+related to software quality [1, 8, 11, 52]. The underlying identified by both commit-based and line-based ap-
+
+arXiv:2408.12807v1  [cs.SE]  23 Aug 2024
+
+
+
+proaches, their ownership values are different and not presents the association of code ownership approximations and
+highly consistent. Nevertheless, a majority (50% to software quality. Section V discusses the implications of our
+93%) of these developers still have a consistent expertise results and provides recommendations. Section VI discusses
+level in the two approaches. the related work, while Section VII discusses the threats to
+
+RQ3 To what degree are major developers missed by the the validity. Section VIII concludes the paper.
+commit-based and line-based approximations? II. THE PRINCIPLES OF CODE OWNERSHIP AND THEIR
+Summary: The developers who are missed by the line- APPROXIMATIONS
+based approach have an ownership value that is statisti-
+cally higher than the developers who are missed by the A. Code ownership
+commit-based approach. Moreover, a large proportion of Code ownership refers to the concept of establishing a chain
+these developers are major developers, suggesting that of responsibility for specific parts of the codebase to individual
+major developers can be missed when using one of the developers or teams. These measures can help managers and
+ownership approximation approaches. stakeholders understand which developers or teams are most
+
+RQ4 Which code ownership approximations have the knowledgeable about a codebase, who is contributing the most
+strongest association with software quality? to its development, and who is best equipped to maintain
+Summary: Considering all ownership metrics and con- and improve it over time. Code ownership can lead to a
+founding factors, the commit-based code ownership more efficient, collaborative, and higher-quality development
+metrics have the highest important scores to our software process. Specifically, the benefits of code ownership include:
+defect models, suggesting the strongest relationship of • Accountability [30, 32, 36, 37]. Code ownership creates
+these metrics with software quality. accountability which helps the team identify who wrote (or
+
+RQ5 Whether code ownership that is important in the is responsible for) this part of code. Further, this helps the
+past release is also important in the current release? team to establish authorship attribution and quantify the
+Summary: The commit-based code ownership which individual productivity of developers. Other team members
+is important in the past release is also important in are encouraged to communicate with each other about
+the current release, suggesting that commit-based code dependencies and potential conflicts. This can help prevent
+ownership should be used to explain why a file is integration issues and improve collaboration across the
+predicted as defective and guide the development of QA team.
+improvement plans. • Rapid bug fixing [4, 13, 31]. With code ownership,
+
+Our results lead us to conclude that commit-based and line- developers are intimately familiar with the code they wrote
+based code ownership approximations identify almost different or are responsible for, making it easier and faster for them
+sets of developers, weakly inconsistent ownership values, and to fix bugs that arise. This can lead to more efficient bug
+could have missed some major developers, confirming that resolution and quicker turnaround times.
+care should be taken when selecting a code ownership approxi- • Increased code quality [7, 21, 38, 38]. When developers
+mation. Based on our analysis, we recommend line-based code take ownership of their code, they gain familiarity and
+ownership be used for accountability purposes (e.g., authorship deep domain expertise in the areas that they are responsible
+attribution, intellectual property), while commit-based code for. This can result in high-quality design and coding.
+ownership should be used for rapid bug-fixing and charting B. Code ownership approximation
+quality improvement plans.
+
+Novelty & Contributions: We are the first to present: Code ownership approximation refers to the process of
+• The degree of the differences between the two commonly- measuring the degree of code ownership that an individual
+
+used code ownership approximations (i.e., commit-based developer or team has over a codebase or software project.
+and line-based) in three main aspects, i.e., identified devel- Various data were used to approximate code ownership such
+opers, ownership values, and expertise levels (RQ1, RQ2, as code commits [9, 10], lines of code [12, 34, 50], bug
+RQ3). reports [6], code reviews [48], time [17, 41], organizational
+
+• An investigation of the association with software quality structure [35], and social coding platform like GitHub [15]. A
+between ownership metrics approximated by the commit- recent mapping study reports that majority of code ownership
+based and line-based approaches (RQ4, RQ5). approximation approaches are based on measuring the number
+
+• A recommendation on when to use commit-based and line- of code commits and lines of code [14]. Thus, in this work,
+based code ownership approximations. we focus on these two common code ownership approximation
+
+• The replication package is available to facilitate in approaches:
+GitHub.1 • Commit-based Code Ownership. This measure calcu-
+
+Organization: Section II provides background and mo- lates the number of code changes made by a particular
+tivating scenarios. Section III presents the investigation of developer or team over a certain period of time, such as a
+the differences in code ownership approximations. Section IV week or a month. The code change ownership is used by
+
+Bird et al. [8, 11] to measure the proportion of commits
+1https://github.com/awsm-research/code-ownership that a developer has contributed to a file relative to the total
+
+2
+
+
+
+Scenario 1: Single-large vs many-small commits Scenario 2: Multiple contributors of the same lines Scenario 3: Little changes in a development cycle
+Release 2.0
+
+Release 2.0
+Release 1.0
+
+Release 2.0
+
+Chris Pat Pat Jane Jane Jane Bob Linda Mary
+
+A commit  A commit  A commit  
+history of A.java history of B.java history of C.java
+
+5 lines 2 lines 1 line 3 lines 3 lines 2 lines 5 lines C.java 2 lines 
+added added added added added added changed added changed
+
+Ownership Commit-based: Line-based: Ownership Commit-based: Line-based: Ownership Commit-based: Line-based:
+Chris 1/3 = 0.33 5/8 = 0.63 Jane 3/4 = 0.75 3/8 = 0.37 Linda 0/1 = 0.00 6/8 = 0.75
+Pat 2/3 = 0.67 3/8 = 0.37 Bob 1/4 = 0.25 5/8 = 0.63 Mary 1/1 = 1.00 2/8 = 0.25
+
+Figure 1. Illustrative scenarios where the commit-based and line-based code ownership approaches will approximate different ownership values.
+
+number of commits for that file. Formally, the commit- code can be considered a major developer by the commit-based
+based code ownership of a given developer d for a file f approach but a minor developer by the line-based approach.
+is computed as follows: For example, in Figure 1 (Scenario 1), the commit-based
+
+approach will consider Chris as having lower ownership
+#commits(d, f)
+
+OWN COMMIT(d, f) = (1) of A.java than Pat, while the line-based approach will
+#total commits(f)
+
+consider Chris as having higher ownership than Pat.
+where #commits(d, f) is the number of code changes Scenario 2: Multiple contributors of the same lines. It is
+(i.e., commits) that a developer d has contributed to a file possible that a developer made many commits to a file but
+f and #total commits(f) is the total number of code the changed lines were overwritten by another developer. In
+changes made to the file f . this scenario, the first developer who made many commits
+
+• Line-based Code Ownership. This measure calculates will be considered a major developer by the commit-based
+the percentage of code written by a particular developer approach. However, the line-based approach will not be able
+or team in relation to the total amount of code in the to capture the contributions of the first developer since the
+project. The line-based ownership is used by Rahman and second developer is considered an owner of those overwritten
+Devanbu [39] to measure the proportion of lines that a lines. For example, in Figure 1 (Scenario 2), the commit-based
+developer has contributed to a file relative to the total approach will consider Jane as having higher ownership
+number of lines for that file. Formally, the line-based code of B.java than Bob, while the line-based approach will
+ownership of a given developer d for a file f is computed consider Bob as having higher ownership than Jane.
+as follows: Scenario 3: Little changes in a development cycle. It is
+
+#lines(d, f) possible that a developer writes many source code lines to
+OWN LINE(d, f) = (2)
+
+#total lines(f) a file in a previous release. However, the developer makes
+where little changes to the file in the current release. Then, the
+
+#lines(d, f) is the number of lines that a developer
+d has authored in a file f and #total lines(f) is the total developer will not be considered an owner of this file by
+number of lines of the file f . the commit-based approach, while still being considered as
+
+a major developer by the line-based approach. For example,
+C. Motivating Scenarios in Figure 1 (Scenario 3), the commit-based approach will
+
+Code ownership approximation is a useful tool for under- consider Mary as an owner of C.java, while could not
+standing who is responsible for maintaining and creating a identify Mary as a developer of C.java in Release 2.0.
+quality improvement plan. However, the commit-based and On the other hand, the line-based approach still considers
+line-based code ownership approximations focus on different Linda as an owner of C.java as she still owns many lines
+aspects (contribution vs authorship) which are measured based in the file.
+on different data (commits vs lines). They may identify III. THE DIFFERENCES OF CODE OWNERSHIP
+different sets of developers, leading to inconsistent owner- APPROXIMATIONS
+ship attribution, and suboptimal software quality improvement
+plans. In this section, we conceptualize the problem of code A. Motivation
+ownership approximations through three motivating scenarios. As discussed in Section II-C, approximating code owner-
+Figure 1 illustrates each of the motivating scenarios. ship based on different aspects may lead to different sets
+
+Scenario 1: Single-large vs. many-small commits. A de- of developers, different ownership values, and inconsistent
+veloper who writes a large proportion of source code in a expertise levels. Moreover, it is also possible that some of the
+file in one commit (i.e., one change), can be considered major developers (developers who made significant amounts
+a major developer by the line-based approach but a minor of contributions) could have been missed. Hence, we set out
+developer by the commit-based approach. On the other hand, to three RQs to examine the consistency in terms of the set of
+a developer who contributes many commits to a few lines of developers identified by the two approaches (RQ1), ownership
+
+3
+
+
+
+RQ1: Analyzing the sets of RQ2: Analyzing the consistency in RQ3: Analyzing ownership of contributors 
+contributors ownership approximation who are missed by one of the approaches
+
+(DP 2) Approximate Major Minor 
+(DP 1)  Commit-based  ownership and expertise Line Line    
+Identify Commit-
+
+Release i Line-
+contributors Major based based
+
+contributors line_only Commit
+of each file Minor Major Minor 
+
+contributors
+ contributors
+ Commit
+
+Commit   Line-based  commit_only Common Own_Line Ownership value Commit_
+History contributors Line_only
+
+only
+
+Figure 2. An overview diagram of our data preparation and analysis approaches for RQ1-RQ3.
+
+values and expertise levels (RQ2), and the number of major file. Finally, we count the number of lines that a line-based
+developers that may not be identified (RQ3). Figure 2 provides contributor modified in the file.
+an overview of our data preparation and analysis approaches. (Step 2) Compute ownership values and identify their levels
+
+of expertise.: We compute ownership values as described in
+B. Studied Systems Section II. We apply these two calculations to each developer
+
+In this work, we use a corpus of publicly-available defect of each file. Then, we identify the expertise level of a devel-
+datasets provided by Yatish et al. [52] where the ground truths oper. Following Bird et al. [8, 11], the expertise level can be
+were labelled based on the affected releases. We opt to use defined based on the code ownership values. Developers with a
+these datasets because prior work [52] showed that when using high code ownership value (e.g., above 5%) are considered as
+the approximation of a post-release window (e.g., 6 months) to major developers, while developers with a low code ownership
+identify post-release defects, (1) some issue reports addressed value (e.g., below 5%) are considered as minor developers.
+within the post-release window do not affect a studied release
+(false positive), while (2) some issue reports that affect the RQ1: To what degree do sets of developers identified by the
+studied release can be addressed later than the post-release commit-based and line-based approaches differ?
+window (false negative). Approach. To answer our RQ1, we analyze the sets of
+
+For each system, the top three releases with the highest developers identified by the commit-based and line-based ap-
+number of issue reports that affected the release were selected. proaches for each file in the studied releases. More specifically,
+This is to ensure that defect prediction models are trained on we first examine how many developers can be identified by
+high-quality datasets with sufficient positive samples of data both approaches, i.e., common = |DC∩DL|
+
+|DC∪DL| , where DC is a
+(i.e., defective files). Thus, we conduct a study based on 25 set of developers identified by the commit-based approach
+releases span across seven open-source software systems. Each and DL is a set of developers identified by the line-based
+dataset has 59 software metrics along two dimensions, i.e., approach. Then, we examine a proportion of developers who
+54 product metrics and 5 process metrics. Table I presents a can only be identified by the commit-based approach (i.e.,
+
+commit only = |DC−DL|
+summary of the studied systems. |DC∪DL| ) and those who can only be identi-
+
+fied by the line-based approach (i.e., line only = |DL−DC |
+C. Data Preparation |DC∪DL| ).
+
+Results. Only 0% to 40% of developers in a file can
+(Step 1) Identify developers of each file: be commonly identified by commit-based and line-based
+
+Commit-based Approach: To obtain a set of commit- approaches. Figure 3 shows that at the median value, the
+based contributors, we first retrieve a list of commits that proportions of common developers is 0% for ActiveMQ,
+(1) occurred on the release branch or (2) that originated on Camel, Groovy, Hive, and JRuby. We find that 25% (HBase)
+other branches, but have been merged into the release branch. to 70% (Camel) of the files do not have common developers
+Similar to prior work [8, 11, 39], since we aim to investigate who can be identified by both approaches. Only Lucene and
+the association between the code ownership of a file and HBase have a median value of 25% and 40% of developers that
+the likelihood that a file will have a post-release defect, we can be commonly identified by both approaches, respectively.
+consider only the commits that were merged into the branch Nevertheless, none of the files in our studied systems have
+of a studied release to measure development activities during a proportion of common developers of 100%. These results
+the development cycle of that release. Then, we use git suggest that the commit-based and line-based approaches do
+name-rev to identify the commits that are associated with not identify the same set of developers for a file.
+a studied release. For each commit, we retrieve the name and Moreover, Figure 3 shows that a substantial proportion
+email address of the contributor and the list of changed files. of developers can be missed when using the commit-based
+Finally, we count the number of commits that a commit-based approach. At the median value, the proportion of line only
+contributor made to a file. developers ranges from 10% to 100% of the total developers
+
+Line-based Approach: To obtain a set of line-based contrib- in a file, indicating that the commit-based approach could
+utors, we first retrieve a list of files at the released version. overlook a substantial proportion of developers that can be
+Then, for each file, we use the git blame command to identified by the line-based approach. As discussed in Section
+identify a contributor who recently modified each line in the II-C, this inconsistency in the sets of developers identified
+
+4
+
+Own_Commit
+
+%Major 
+contributors
+
+
+
+Table I
+A STATISTICAL SUMMARY OF THE STUDIED SYSTEMS.
+
+Name Description No. of files Defective Rate KLOC Studied Releases
+ActiveMQ Messaging and Integration Patterns server 1,884-3,420 6%-15% 142-299 5.0.0, 5.1.0, 5.2.0, 5.3.0
+Camel Enterprise Integration Framework 1,515-8,846 2%-18% 75-383 1.4.0, 2.9.0, 2.10.0, 2.11.0
+Groovy Java-syntax-compatible OOP for JAVA 757-884 3%-8% 74-90 1.5.7, 1.6.0.Beta 1, 1.6.0.Beta 2
+HBase Distributed Scalable Data Store 1,059-1,834 20%-26% 246-534 0.94.0, 0.95.0, 0.95.2
+Hive Data Warehouse System for Hadoop 1,416-2,662 8%-19% 287-563 0.9.0, 0.10.0, 0.12.0
+JRuby Ruby Programming Lang for JVM 731-1,614 5%-18% 105-238 1.1, 1.4, 1.5, 1.7
+Lucene Text Search Engine Library 805-2,806 3%-24% 101-342 2.3.0, 2.9.0, 3.0.0, 3.1.0
+
+Developers Common Commit_only Line_only Lucene
+
+JRuby
+100
+
+Hive
+
+HBase
+75
+
+Groovy
+
+Camel
+50
+
+ActiveMQ
+
+0.00 0.25 0.50 0.75 1.00
+25 Spearman's correlation coefficients (ρ)
+
+0 Figure 4. The Spearman’s correlation coefficient between the ownership
+ActiveMQ Camel Groovy HBase Hive JRuby Lucene values of the commit-based and line-based approaches.
+
+Studied Systems
+
+Figure 3. A proportion of developers that are identified by both approaches by the commit-based and line-based approaches. We use
+(common), by only the commit-based approach (commit only), and by only
+the line-based approach (line only). Spearman’s correlation analysis. A correlation coefficient |ρ|
+
+value of 1 indicates that the commit-based and line-based
+approaches approximate ownership values in a consistent
+
+by the two approaches may be because of little changes direction (e.g., the more the commit-based ownership value,
+in a development cycle (Scenario 3). We observe that 19% the more the line-based ownership value). On the other hand,
+(HBase) to 67% (Camel) of the files were not changed during a |ρ| value of 0 indicates that the commit-based and line-based
+a development cycle.2 This suggests that if the files were approaches do not consistently approximate the ownership
+not changed during the development cycle, the commit-based values. The correlation is considered as weak for |ρ| < 0.3,
+approach will not be able to identify any developers of those moderate for 0.3 ≤ |ρ| < 0.7 , and strong for |ρ| ≥ 0.7 [2, 18].
+files. Results. The ownership values approximated by the
+
+commit-based and line-based approaches have a small
+RQ1 Summary: to moderate correlation. Figure 4 shows the distribution of
+Only 0% to 40% of developers can be identified by both Spearman’s correlation coefficient (ρ) of the ownership values
+commit-based and line-based approaches, indicating these approximated by the commit-based and line-based approaches.
+approaches do not identify the same set of developers. A For four out of the seven studied systems, the correlation is
+substantial proportion of developers can be missed when small with the median ρ value of 0.24 (ActiveMQ, Lucene) -
+using one of the ownership approximation approaches. 0.29 (Camel). For the other three systems (i.e., Groovy, HBase,
+
+and JRuby), the correlation is moderate with the median ρ
+value of 0.42 (HBase) - 0.65 (JRuby). These results indicate
+
+RQ2: Do the commit-based and line-based approximations that the ownership values approximated by the commit-based
+provide consistent estimates of ownership values? and line-based approaches are weakly to moderately corre-
+
+Approach. To address our RQ2, we analyze the code own- lated. As discussed in Section II-C, this weak correlation of
+ership values of the common developers who can be identified ownership values could be related to the single-large vs many-
+by both commit-based and line-based approaches. To do so, small commits or multiple contributions of the same lines
+for each file in the studied releases, we analyze the correlation (Scenario 1 & 2).
+between the ownership values of each developer approximated Nevertheless, when we examine the expertise levels of these
+
+common developers, we find that a majority of them are
+2Note that although these files were not changed, 0% - 18% (with a median classified into a consistent expertise level. In particular, we
+
+of 2%) of these files have a post-release defect. find that on average across studied releases, 56% (HBase) to
+
+5
+
+A proportion of developers in a file in a release (%)
+
+Studied Systems
+
+
+
+Commit_only Line_only
+
+ActiveMQ Camel Groovy HBase Hive JRuby Lucene
+1.00 1.00 1.00 1.00 1.00 1.00 1.00
+
+0.75 0.75 0.75 0.75 0.75 0.75 0.75
+
+0.50 0.50 0.50 0.50 0.50 0.50 0.50
+
+0.25 0.25 0.25 0.25 0.25 0.25 0.25
+
+0.00 0.00 0.00 0.00 0.00 0.00 0.00
+
+active
+mq−5.0.0
+
+active
+mq−5.1.0
+
+active
+mq−5.2.0
+
+active
+mq−5.3.0
+
+camel−1.4.0
+
+camel−2.10.0
+
+camel−2.11.0
+
+camel−2.9.0
+
+groovy−1_5_7
+
+groovy−1_6_BETA_1
+
+groovy−1_6_BETA_2
+
+hbase−0.94.0
+
+hbase−0.95.0
+
+hbase−0.95.2
+
+hive
+−0.10.0
+
+hive
+−0.12.0
+
+hive
+−0.9.0
+
+jruby−1.1
+
+jruby−1.4.0
+
+jruby−1.5.0
+
+jruby−1.7.0.preview1
+
+lucene−2.3.0
+
+lucene−2.9.0
+
+lucene−3.0.0
+
+lucene−3.1
+
+Figure 5. A distribution of an ownership value for the commit_only and line_only developers.
+
+80% (Groovy) of the common developers have a consistent ownership values of the commit only developers are statis-
+expertise level. In particular, these common developers are tically larger than the ownership values of the line only de-
+consistently classified as major developers, while few of the velopers (p-value < 0.05) with a small to large effect size (|δ|
+common developers (0%-4%) are consistently classified as is 0.17 - 0.74) for all the studied releases (except ActiveMQ
+minor developers. These results indicate that the commit-based 5.0.0). These findings suggest that the line-based approach
+and line-based approaches consistently identify the expertise misses the commit only developers who made a relatively
+level of the majority of the common developers. large contribution (in terms of the number of commits) during
+
+the development cycle.
+RQ2 Summary: When we examine the expertise levels, we find that a large
+For the developers who can be commonly identified by both proportion of commit only and line only developers are major
+commit-based and line-based approaches, their ownership developers. In particular, on average across studied releases in
+values are different and not highly consistent. Nevertheless, each system, 89% (JRuby) - 100% (ActiveMQ, Camel, Hive,
+a majority (50% to 93%) of these developers still have a and Lucene) of the commit only developers are considered
+consistent expertise level by the two approaches. major based on the number of commits made to a file. On the
+
+other hand, 67% (HBase) - 86% (ActiveMQ) of the line only
+RQ3: To what degree are major developers missed by the developers are considered major developers based on the
+commit-based and line-based approximations? number of lines authored in a file in the released version. These
+
+results suggest that a large proportion of the developers who
+Approach. Our RQ1 shows that a large proportion of are missed by one of the ownership approximation approaches
+
+developers can be missed when using one of the approximation are major developers.
+approaches. We set out to further investigate the ownership
+values of these developers. We check which group of the RQ3 Summary:
+developers (commit only or line only) made a larger contribu- The developers who are missed by the line-based approach
+tion. We use a one-sided Wilcoxon rank sum test to determine (i.e., commit only developers) have an ownership value
+whether the ownership values of the commit only developers that is statistically higher than the developers who are
+are statistically greater (or less) than the ownership values of missed by the commit-based approach (i.e., line only de-
+the line only developers. We also use Cliff’s |δ| to measure velopers). Moreover, a large proportion of the commit only
+the effect size (i.e., the magnitude of the difference). The and line only developers are major developers, suggesting
+difference is considered as negligible for |δ| < 0.147, small that major developers can be missed when using one of the
+for 0.147 ≤ |δ| < 0.33, medium for 0.33 ≤ |δ| < 0.474, and ownership approximation approaches.
+large: 0.474 ≤ |δ|.
+
+Results. The commit only developers typically have an IV. THE ASSOCIATION OF CODE OWNERSHIP
+ownership value of 0.18-1, while the line only developers
+
+APPROXIMATIONS WITH SOFTWARE QUALITY
+typically have an ownership value of 0.07-0.37. Figure 5
+shows a distribution of ownership values for the commit only A. Motivation
+and line only developers for each studied release. At the In practice, code ownership is widely used to identify who
+median value, the ownership values of the commit only de- is responsible for bug fixing and improving code quality.
+velopers range from 0.18 (JRuby) - 1 (ActiveMQ, Camel, Prior studies suggested building a defect prediction model to
+Groovy, and Hive). On the other hand, the ownership values understand the association between code ownership approx-
+of the line_only developer range from 0.07 (JRuby) - 0.37 imations and software quality [8, 48]. However, the results
+(ActiveMQ). The statistical analysis also confirms that the of Section III show that the commit-based and line-based
+
+6
+
+An ownership value
+
+
+
+(Step 4)
+ (Step 5)
+
+Explain Ranking
+
+
+Past Release I-1 Current Release I Models Importance 
+ Metrics
+Training Testing scores RQ4
+
+(Step 1)  (Step 2)
+ (Step 3)
+ (Step 6)
+ (Step 7)
+
+Mitigate Mitigate  Build Generate   Explain 
+
+Collinearity Imbalance Models Predictions Predictions If {OWN<0.8} then {BUG}
+Defect Models Predictions RQ5
+
+Figure 6. An overview diagram of our approach for analyzing the association of code ownership approximations and software quality.
+
+ownership approximations are different in terms of a set of
+developers and ownership values. However, it remains unclear RF
+
+about which code ownership approximation approaches have 0.5 0.6 0.7 0.8 0.9 1.0
+AUC
+
+the strongest association with software quality. Thus, we set
+out to investigate which code ownership measures are the most Figure 7. The AUC values of our defect prediction models.
+important, and whether code ownership that is important in a
+past release is also important in a subsequent release.
+
+the Spearman correlation analysis and the Variance Inflation
+B. Model Building Factor analysis (VIF) to remove multi-collinear metrics.
+
+(Step 2) Mitigate Class Imbalance. Class imbalance is a
+We developed defect prediction models to investigate the phenomenon of a defect dataset where the proportion of
+
+association between code ownership approximations and soft- defective and clean modules is not equally represented which
+ware quality. We build a defect prediction model in a cross- can have a negative impact on the predictions of defect
+release setting (i.e., releases i−1, i). Borrowing the concept of prediction models [43]. Thus, we apply the SMOTE technique
+Explainable AI, we focus on both explaining the model (global to each of the training datasets using the smote function of
+explanation) trained from the past release i−1 and explaining the imblearn python package.
+the predictions (local explanations) of the defective files in the (Step 3) Training a Model. We train models based on the
+current release i. The explanation is presented in the form of cross-release scenario, i.e., a previous release i − 1 is used
+the most important metrics. We consider the following features for training, and a current release i is used for evaluation.
+in our model. Figure 6 presents an overview of our model- We use the Random Forests classification technique since the
+building approach. Below, we describe the studied metrics, the Random Forests classification technique tends to produce the
+confounding metrics, and the model-building steps in detail. most accurate defect prediction models [19, 45, 47]. We
+
+Studied Metrics:. We studied the six ownership met- build the model using the RandomForestClassifier
+rics, i.e., two ownership values (i.e., OWN COMMIT and of the scikit-learn package. In addition, as suggested
+OWN LINE) approximated by the commit-based and line by prior work [45, 47], we optimize hyper-parameter set-
+approaches as described in Section II and the number of devel- tings of the random forest classification technique using the
+opers in each of four expertise levels (i.e., MAJOR COMMIT, RandomizedSearchCV function.
+MINOR COMMIT, MAJOR LINE and MINOR LINE). Finally, we evaluate the accuracy of the models based on the
+
+Confounding Metrics. Prior studies have shown that sev- data of the current release i using the Area Under the receiver
+eral software factors can have an impact on software qual- operator characteristic Curve (AUC). The AUC measure is a
+ity [22, 25, 38, 52]. Since we want to analyze the association threshold-independent performance measure that evaluates the
+between code ownership approximations and software quality, ability of models to discriminate between defective and clean
+we use the 54 product and five process metrics provided by files, where the AUC value ranges between 0 (worst), 0.5 (no
+Yatish et al. [52] as confounding factors. Product metrics mea- better than random guessing), and 1 (best) [23]. Figure 7 shows
+sure code characteristics in three dimensions: (1) complexity, that our defect prediction models achieve a median AUC value
+e.g., McCabe Cyclomatic, (2) volume, e.g., lines of code, of 0.80, confirming that the models are accurate enough to be
+and (3) object-oriented design, e.g., coupling between object used for further analysis.
+classes. Process metrics measure the development activity
+during the development cycle of a release, e.g., the number
+of commits, and the number of lines added and deleted. RQ4: Which code ownership approximations have the
+
+strongest association with software quality?
+(Step 1) Mitigate Multi-collinearity. We first analyze and
+
+remove multi-collinearity among studied metrics and con- Approach. We perform the following two steps.
+founding metrics to avoid the spurious relationship of the (Step 4) Explain the Defect Prediction Models. To analyze
+metrics and defect-proneness [27]. We used the AutoSpearman the importance of code ownership metrics, we analyze the
+approach [28], which is an automated approach based on defect prediction models by computing the metric importance
+
+7
+
+
+
+The Importance Scores RQ5: Whether code ownership that is important in the past
+release is also important in the current release?
+
+OWN_COMMIT Approach. Since the importance scores in RQ4 are derived
+MAJOR_COMMIT from the models that are trained from the data of a previous
+
+DDEV release (i− 1), we further investigate whether the importance
+ADEV
+
+Added_lines scores still apply to all predictions in the current release i of
+COMM the same project. To do so, we perform the following step.
+
+Del_lines
+(Steps 6,7) Generate and Explain the Predictions of De-
+
+CountClassCoupled fect Models. For each release i, we use our defect model
+AvgLine trained based on the previous release i − 1 data to predict
+
+AvgLineCode
+CountOutput_Max whether each file will be defective. Then, we use a state-
+
+CountOutput_Mean of-the-art Local-Interpretability Model-agnostic Explanations
+RatioCommentToCode (LIME) technique to explain each prediction of the defect
+
+Figure 8. (RCQou4n) tTShtme tEopx-e5 non-parametric ScottKnott ESD (NPSK) ranking models [40]. LIME is one of the most well-known local model-
+of the CfeoautunrteLiinmepCoortdaenEcexescores of our defect prediction models. agnostic techniques for explaining an individual prediction of
+CountDeclMethodPublic
+
+SumCyclomaticStrict any classification technique. We use the implementation of
+SumCyclomaticModified the LIME technique that is provided by the lime python
+
+scores oSfumdCeyfeclcotmaptricediction models. We use the calcula-
+CountDeclFunction package. Given a prediction, an explanation of LIME includes
+
+CtoiountDoefclItnhsetanpceerMmeuthtaotdion importance that is built within the a supporting score to indicate the importance of a metric that
+featuCrouen_tDiemcplMoerthtoadnces_ of the random forest technique
+
+CountLine the defect model uses for the prediction.
+in the sCcoiuknitLtin-eBlleanakrn Python package. To address RQ5, we analyze the supporting scores of the
+
+(Step C5o)unRtLainnkeiCnogdethe Most Important Metrics. Since the
+CountLineCodeDecl top 5 metrics for the correctly predicted defective files. Specif-
+
+distributioSnusmoEfsismenptoiarltance scores are estimated based on mul- ically, we examine the distributions of LIME’s supporting
+tiple moCdoeulnstSoefmmicuollotnCountStmitple releases, we use the Non-Parametric scores of the top 5 metrics. In addition, we measure the
+ScottKnoCttouEnStSDtm(tNDPecSlK) test3 to find statistically distinct ranks proportion of the correctly predicted defective files whose code
+of metrCicosunbtIanspeudt_Monax
+
+CountInput_Meanthe importance scores. The NPSK test ownership metrics have the highest supporting score.
+isPearcmenutLltaicpklOe fcComhepsaiornison approach that leverages hierarchical Results. When predicting defective files in the current
+clusterinCgoutontPpaatrht_itMioanxAvgCyclomatic the set of median values of techniques release, the commit-based code ownership metric has a
+(eA.gv.g,CmyceldomiaantsicoMfovdaifireidable importance scores, medians of model higher supporting score in predictions than other metrics.
+perfoArvmgCanyccleo)maintictoStriscttMaxCyclomaticatistically distinct groups with a non- Figure 9 shows the distribution of supporting scores of the
+neMgalxigCiybclleomdatiifcfMeroednifcieed. Unlike the original ScottKnott ESD
+test M[4a6xC],yctlhoemaNticPSStrKict top 5 metrics in predictions of files in the current release. We
+
+MaxNesting_Max test does not require the assumptions found that the ownership value approximated by the commit-
+of noMrmaxaNl edsitisntgri_bMuetiaonns, homogeneous distributions, and the based approach (i.e., OWN COMMIT) has supporting scores
+minimuCmounstaPmatphl_eMseiaznCountLineCommenet . in predictions significantly higher than other metrics. The
+
+CounRtDeesculIlntst.anCcoeVmamriaibtl-ebased code ownership approximation supporting score varies from 0.04 to 0.45 with a median of
+has the hMigAhJOesRt_iLmINpECountOutput_Minortant scores. Figure 8 shows the non- 0.18, while other metrics vary from 0.01 to 0.15 with a median
+paramMeatxrIincheSrcitaonttcKeTnroeett ESD ranking of the importance scores
+of the sCtuodunietIdnpumt_eM
+
+of 0.05. The one-sided Wilcoxon Rank Sum tests also confirm
+triinCountClassBasecs in the software defect models. The that the supporting scores of OWN COMMIT are statistically
+
+ownersAhvigpLivnaelCuoems mapepnrtoximated by the commit-based approach higher than each of the other metrics (p-value < 0.001) with a
+(OWN COMOWMNI_TL)INhE
+
+MINOR_LINEas the highest rank of the important scores large Cliff’s delta effect size difference. These results indicate
+CoiunntoDuercdlMeeftehcotdmProdteecltse.dMoreover, the number of major develop- that the commit-based ownership metric is often the most
+
+eCrsoubnatDseedclColansscVoamriambliet-based ownership (MAJOR COMMIT) important metric for predicting defective files.
+aClosuonthDaesclMtheethosdePcorivnadtehighest rank of the importance scores. The commit-based code ownership metric typically
+On the othAevrgLhinaenBdl,anwke find that the metrics of the line-based has the highest supporting scores in prediction for
+ownershCipouanptDpercolxCilmasastion (e.g., OWN LINE) appear to have 97%(median) of the correctly predicted defective files.
+the siCxothunrtCanlakssoDfertihveedimportant scores.
+
+CountDeclClassMethod Figure 10 shows the percentage of the correctly predicted
+CRouQnt4DeSculMmetmhoadrDye:fault defective files for the current releases whose OWN COMMIT
+
+AvgEssential has the highest LIME’s supporting score. We found that
+ConsidCeroiunngtPaaltlho_wMninership metrics and confounding factors, at the median value, 97% of the files in a release have
+the commit-based code ownership approximation has the
+
+MaxNesting_Min OWN COMMIT with the highest supporting score. Specifi-
+highest important scores to our software defect models, cally, in five studied releases, all of the correctly predicted
+suggeMsItNinOgR_thCaOtMthMeITcommit-based code ownership metrics defective files have OWN COMMIT as the highest supporting
+share the strongest relationship with software quality. scores (i.e, activemq-5.1.0, camel-2.9.0, camel-2.10.0, groovy-
+
+1 6 BETA 1, lucene-2.9.0). For the other studied releases, the
+3https://github.com/klainfo/ScottKnottESD proportion of the files where OWN COMMIT has the highest
+
+8
+
+1 2 3 4 5 6 7 8 9 10 11 12 13
+
+30
+
+20
+
+●
+●
+
+●
+10 ●
+
+● ● ●
+● ●
+
+● ●
+●
+
+● ●
+0 ●● ●● ● ●● ● ●●
+
+
+
+0.4
+
+0.3
+
+0.2
+
+0.1
+
+0.0
+IT s s le n
+
+M od se te in IT d V in t d
+lin
+
+e en
+t
+
+led d
+te
+
+m up c ria
+b ea
+
+n de NE tia
+l
+
+M Co LI en ea sio
+n
+
+NE ee
+Tr et
+
+h Ba
+riv
+
+a _M M lan
+k
+
+las
+s
+
+M en bli
+c
+
+NE
+ifie
+
+OM d_ te
+C To M M riv
+
+e fau
+lt
+
+ea
+n
+
+lC t_ m Pu LI od
+de om Co ro l_l
+
+ine
+
+Va t_ N_ ss _M he LI ce
+pu las
+
+s
+dP ut De ADE
+
+De M
+t_ ine
+
+B
+ec pu m od R_
+
+N_
+Ad ss dP De
+
+en
+t
+
+gE tin
+g Co R_
+
+ine
+C
+
+la o las
+s
+
+ut m OW
+Av es Of ita
+
+n
+AJO tC ho tIn
+
+p CO
+od
+
+las
+s pu gL tD ut Co
+
+th cM
+un et un R_
+
+OW tL C tC et
+h In
+
+nt Av un tO e IN
+O
+
+Lin
+e
+
+M at
+i
+
+nt et
+h lC tO
+
+un ec un om ck M er las
+s
+
+ax
+N
+
+La nh lC
+ec Co lM
+
+ec Co
+AJO un clM Co un clM lom
+
+Co
+Co Cou clM tD oC M nt ax
+
+I
+tD M Co De Cou Avg De yc
+
+De un Co
+ti ce M tD
+
+un nt
+nt un nt gC
+
+Co Ra
+Co Cou Cou Av
+
+Cou Per Co
+
+Figure 9. (RQ5) The LIME’s supporting scores of each metric when explaining the prediction of defective files in the current release.
+
+that the number of code authors and the ownership values
+approximated by the line-based ownership should not be a
+
+0.0 0.2 0.4 0.6 0.8 1.0 concern for a quality improvement plan as these metrics are
+#Correctly Predicted Defective Files weakly associated with defect-proneness.
+
+Recommendation 2. The commit-based approach would
+Figure 10. (RQ5) The proportion of correctly predicted defective files that be more suitable for rapid bug-fixing and quality improve-
+code ownership metrics appear at the top rank of LIME’s explanations. ment plans. RQ3 shows that a large proportion of develop-
+
+ers who were missed by one of the approaches are major
+developers who made a large contribution. Developers who
+
+supporting score varies between 75% to 97%. These results have recently made changes to the file are likely to pos-
+suggest that when predicting defective files in the current sess a more up-to-date understanding of the code compared
+release, the commit-based code ownership metric is still the to their counterparts who have not been actively involved
+most important metric for predictions. in the recent development cycle. The results of RQ4 and
+
+RQ5 Summary: RQ5 confirm that the commit-based ownership metric is the
+most important metric when explaining the defect model
+
+The commit-based code ownership which is important in trained from past releases and also when explaining de-
+the past release is also important in the current release, fective files in the current releases. For charting a quality
+suggesting that commit-based code ownership should be improvement plan, practitioners may use a LIME’s expla-
+used to explain why a file is predicted as defective and nation which provides the association rules between code
+guide the development of QA improvement plans. ownership metrics and defect-proneness. For example, Given
+
+an association rule of {COMMIT OWN < 0.5} ⇒ BUG,
+V. DISCUSSION AND IMPLICATIONS which suggests that if the commit-based ownership metric
+
+is less than 0.5, there is a higher chance that a file will
+Our results have highlighted the key differences in ap- be defective. Then, by flipping the LIME association rule,
+
+proximations between the commonly used code ownership {COMMIT OWN >= 0.5} ⇒ CLEAN, a quality improve-
+approximations, i.e., commit-based and line-based approaches. ment plan can be as maintaining a degree of commit-based
+Specifically, our RQ1-RQ3 shows that the set of developers ownership higher than 0.5 to reduce the risk of having defects.
+and their ownership values identified by the two approaches
+are different and our RQ4-RQ5 show the important scores VI. RELATED WORK
+among ownership metrics are different. These results highlight
+that these code ownership approximations capture different A. Code Ownership Empirical Studies
+aspects of the contributions and relationship with software While many studies adopted code ownership approxima-
+quality. Thus, a choice of code ownership approximation tions to investigate the impact on code ownership in several
+should be based on the key goal of code ownership usage. aspects [4, 13, 13, 31, 49], few studies empirically investigate
+
+Recommendation 1. The line-based approach would be the differences in these metrics. Avelino et al. [5] and Cury
+more suitable for accountability (e.g., authorship attribution, et al. [16] investigated the accuracy of three ownership ap-
+intellectual property) since our RQ1 also shows that the line- proaches to identify developers who declared themselves as
+based approach tends to identify a larger set of developers than knowledgeable developers for a file. Hannebauer et al. [24]
+the commit-based approach. However, our RQ4 and RQ5 show compare the performance of code ownership approximations
+
+9
+
+LIME's Supporting Scores
+
+
+
+for code reviewer recommendation. Thongtanunam et al. [48] impact on software quality, then software quality improvement
+investigate the differences between commit-based ownership plans to enforce strong code ownership can be put into place.
+and review-based ownership. Oliveira et al. [37] investigate the On the other hand, if code ownership has little effect, then
+team leaders’ perception of different code ownership metrics the normal bottlenecks associated with having one person in
+for measuring productivity. charge of each component can be removed, and available talent
+
+Key Difference. While prior studies compare the perfor- reassigned at will.
+mance of code ownership metrics for various specific tasks, Key Difference. While prior studies only derive the impor-
+none of the studies empirically quantify the difference in the tance of code ownership on software quality based on a past
+set of identified developers, and the code ownership values and release, there exist no studies investigating if the importance
+the association of ownership metrics with software quality. of such metrics in the past still holds in the current release and
+
+would the risk of having defects be decreased when software
+B. Code Ownership & Software Quality quality improvement plans to enforce strong code ownership
+
+There is a plethora of studies that investigate the relationship is put into place.
+between code ownership and software quality. For example,
+Seifert et al. [26] found that an increasing number of distinct VII. THREATS TO THE VALIDITY
+authors making changes to a file may lead to more software We now discuss the threats to the validity of our study.
+defects. Meneely et al. [33] found that contributions by less-
+focused developers were associated with more security-related Construct Validity. In addition to heuristic-based code
+errors. A study of Bird et al. [11] at Microsoft products found ownership approximations studied in this work, machine learn-
+that small commit-based contributions by minor developers ing (ML) or statistical approaches can also be used [16].
+are associated with the number of post-release defects. A However, the key goal of this paper is to empirically demon-
+study by Rahman and Devanbu [38] found that line-based strate the impact of different aspects captured by different
+code ownership has a large impact on software quality. In code ownership approximations on the ownership values and
+contrast, Weyuker et al. [51] and Graves et al. [20] found that identified owners. We believe that the key findings of our paper
+the number of contributors does not have a strong relationship remain unchanged when considering other code ownership
+with defect-proneness. approximation techniques.
+
+Key Difference. Since the conclusions of prior studies Internal Validity. We studied a limited number of con-
+are contradictory, we suspect that the different conclusions founding factors for our case study, as there might be other
+may have to do with the use of different code ownership confounding factors that are associated with software quality.
+approximations (e.g., commit-based or line-based code own- To mitigate this threat, we chose to study a large number of
+ership). However, there exist no studies that investigate the software metrics (i.e., 64 metrics) that capture both process
+impact of both commit-based and line-based code ownership and product dimensions. Thus, other confounding factors can
+approximations on software quality. In this paper, we address be included in future work.
+this challenge by investigating the nature of the differences External Validity. We studied a limited number of software
+between the commit-based and line-based code ownership systems. Thus, our results may not generalize to other datasets,
+approximations and their impact on software quality. domains, or ecosystems. However, we mitigated this threat
+
+by choosing a range of different non-trivial, real-world, open-
+C. Code Ownership for Software Quality Improvement Plans source software applications. Nonetheless, additional replica-
+
+The findings of prior work draw several important implica- tion studies in a proprietary setting and other ecosystems will
+tions for practitioners to develop software quality improvement prove useful.
+plans based on code ownership. For example, a study at
+Microsoft [8, 11] recommended that files with low code own- VIII. CONCLUSIONS
+
+ership should be given priority by software quality assurance In this paper, we find that commit-based and line-based
+resources (i.e., more testing and code review effort). Another ownership approximations produce different sets of devel-
+study at Microsoft [9, 35] also found that when more people opers, different code ownership values, and different sets
+work on software components, it has more failures since there of major developers. In addition, we find that the commit-
+is no clear point of contact. Thus, the contributions to a based approximation has a stronger association with software
+software component are spread across many developers, and quality than the line-based approximation, suggesting that
+there is an increased chance of communication breakdowns, commit-based code ownership approximations should be used
+misaligned goals, inconsistent interfaces, and semantics, all to accurately explain why a file is predicted as defective and
+leading to poor software quality. to guide the development of QA improvement plans. Based
+
+Rahman and Devanbu [38] commented that these implica- on our analysis, we recommend line-based code ownership be
+tions are very crucial for software-intensive organizations to used for accountability purposes (e.g., authorship attribution,
+develop the most effective quality improvement plans. Thus, intellectual property), while commit-based code ownership
+managers and team leads can make better decisions about should be used for rapid bug-fixing and charting quality
+how to govern a project. If code ownership has the largest improvement plans.
+
+10
+
+
+
+REFERENCES Applications (SEAA). 63–67. https://doi.org/10.1109/SEAA.
+[1] John Ahlgren, Maria Eugenia Berezin, Kinga Bojarczuk, Elena 2016.18
+
+Dulskyte, Inna Dvortsova, Johann George, Natalija Gucevska, [16] Otávio Cury, Guilherme Avelino, Pedro Santos Neto, Ricardo
+Mark Harman, Shan He, Ralf Lämmel, et al. 2020. Ownership Britto, and Marco Túlio Valente. 2022. Identifying Source
+at Large–Open Problems and Challenges in Ownership Man- Code File Experts. In Proceedings of the 16th ACM / IEEE
+agement. arXiv preprint arXiv:2004.07352 (2020). International Symposium on Empirical Software Engineering
+
+[2] Haldun Akoglu. 2018. User’s guide to correlation coefficients. and Measurement (ESEM ’22). 125–136.
+Turkish journal of emergency medicine 18, 3 (2018), 91–93. [17] Jose Ricardo da Silva, Esteban Clua, Leonardo Murta, and
+
+[3] Wisam Haitham Abbood Al-Zubaidi, Patanamon Thongta- Anita Sarma. 2015. Niche vs. breadth: Calculating expertise
+nunam, Hoa Khanh Dam, Chakkrit Tantithamthavorn, and over time through a fine-grained analysis. In 2015 IEEE 22nd
+Aditya Ghose. 2020. Workload-aware reviewer recommendation International Conference on Software Analysis, Evolution, and
+using a multi-objective search-based approach. In Proceedings Reengineering (SANER). 409–418. https://doi.org/10.1109/
+of the 16th International Conference on Predictive Models and SANER.2015.7081851
+Data Analytics in Software Engineering (PROMISE). 21–30. [18] Christine P Dancey and John Reidy. 2007. Statistics without
+
+[4] John Anvik, Lyndon Hiew, and Gail C Murphy. 2006. Who maths for psychology. Pearson Education.
+should fix this bug?. In Proceedings of the 28th international [19] Baljinder Ghotra, Shane McIntosh, and Ahmed E Hassan.
+conference on Software engineering. 361–370. 2015. Revisiting the Impact of Classification Techniques on the
+
+[5] Guilherme Avelino, Leonardo Passos, Fabio Petrillo, and Performance of Defect Prediction Models. In Proceedings of
+Marco Tulio Valente. 2019. Who Can Maintain This Code?: the International Conference on Software Engineering (ICSE).
+Assessing the Effectiveness of Repository-Mining Techniques 789–800.
+for Identifying Software Maintainers. IEEE Software 36, 6 [20] Todd L Graves, Alan F Karr, James S Marron, and Harvey Siy.
+(2019), 34–42. https://doi.org/10.1109/MS.2018.185140155 2000. Predicting fault incidence using software change history.
+
+[6] Shadi Banitaan and Mamdouh Alenezi. 2013. DECOBA: Utiliz- IEEE Transactions on software engineering 26, 7 (2000), 653–
+ing Developers Communities in Bug Assignment. In 2013 12th 661.
+International Conference on Machine Learning and Applica- [21] Michaela Greiler, Kim Herzig, and Jacek Czerwonka. 2015.
+tions, Vol. 2. 66–71. https://doi.org/10.1109/ICMLA.2013.107 Code ownership and software quality: a replication study. In
+
+[7] Julian M Bass. 2015. How product owner teams scale agile 2015 IEEE/ACM 12th Working Conference on Mining Software
+methods to large distributed enterprises. Empirical software Repositories. IEEE, 2–12.
+engineering 20 (2015), 1525–1557. [22] Tracy Hall, Sarah Beecham, David Bowes, David Gray, and
+
+[8] Christian Bird, Brendan Murphy, and Harald Gall. 2011. Don’t Steve Counsell. 2012. A Systematic Literature Review on Fault
+Touch My Code ! Examining the Effects of Ownership on Prediction Performance in Software Engineering. Transactions
+Software Quality. In Proceedings of the European Conference on Software Engineering (TSE) 38, 6 (2012), 1276–1304.
+on Foundations of Software Engineering (ESEC/FSE). 4–14. [23] J a Hanley and B J McNeil. 1982. The meaning and use of
+
+[9] Christian Bird, Nachiappan Nagappan, Premkumar Devanbu, the area under a receiver operating characteristic (ROC) curve.
+Harald Gall, and Brendan Murphy. 2009. Does Distributed Radiology 143, 4 (1982), 29–36.
+Development Affect Software Quality?: An Empirical Case [24] Christoph Hannebauer, Michael Patalas, Sebastian Stünkel, and
+Study of Windows Vista. Commun. ACM 52, 8 (2009), 85– Volker Gruhn. 2016. Automatically Recommending Code
+93. Reviewers Based on Their Expertise: An Empirical Comparison.
+
+[10] Christian Bird, Nachiappan Nagappan, Brendan Murphy, Harald In Proceedings of the 31st IEEE/ACM International Conference
+Gall, and Premkumar Devanbu. 2009. Putting it All Together: on Automated Software Engineering (ASE ’16). 99–110.
+Using Socio-technical Networks to Predict Failures. Proceed- [25] Ahmed E. Hassan. 2009. Predicting Faults using the Com-
+ings of the International Symposium on Software Reliability plexity of Code Changes. In Prooceedings of the International
+Engineering (ISSRE) (2009), 109–119. Conference on Software Engineering (ICSE). 78–88.
+
+[11] Christian Bird, Nachiappan Nagappan, Brendan Murphy, Harald [26] Timea Illes-Seifert and Barbara Paech. 2008. Exploring the
+Gall, and Premkumar Devanbu. 2010. An Analysis of the relationship of history characteristics and defect count: an em-
+Effect of Code Ownership on Software Quality across Windows, pirical study. In Proceedings of the 2008 workshop on Defects
+Eclipse, and Firefox. Technical report, University of California in large software systems. 11–15.
+(2010). [27] Jirayus Jiarpakdee, Chakkrit Tantithamthavorn, and Ahmed E.
+
+[12] Egor Bogomolov, Vladimir Kovalenko, Yurii Rebryk, Alberto Hassan. 2019. The Impact of Correlated Metrics on the
+Bacchelli, and Timofey Bryksin. 2021. Authorship attribution of Interpretation of Defect Models. IEEE Transactions on Software
+source code: A language-agnostic approach and applicability in Engineering (TSE) (2019).
+software engineering. In Proceedings of the 29th ACM Joint [28] Jirayus Jiarpakdee, Chakkrit Tantithamthavorn, and Christoph
+Meeting on European Software Engineering Conference and Treude. 2018. AutoSpearman: Automatically Mitigating Cor-
+Symposium on the Foundations of Software Engineering. 932– related Metrics for Interpreting Defect Models. In Proceeding
+944. of the International Conference on Software Maintenance and
+
+[13] Markus Borg, Adam Tornhill, and Enys Mones. 2023. U Owns Evolution (ICSME). To Appear.
+the Code That Changes and How Marginal Owners Resolve Is- [29] Vaibhavi Kalgutkar, Ratinder Kaur, Hugo Gonzalez, Natalia
+sues Slower in Low-Quality Source Code. In Proceedings of the Stakhanova, and Alina Matyukhina. 2019. Code authorship
+27th International Conference on Evaluation and Assessment in attribution: Methods and challenges. ACM Computing Surveys
+Software Engineering. 368–377. (CSUR) 52, 1 (2019), 1–36.
+
+[14] Renata Brasil-Silva and Fábio Levy Siqueira. 2022. Metrics to [30] Jay Kothari, Maxim Shevertalov, Edward Stehle, and Spiros
+Quantify Software Developer Experience: a Systematic Map- Mancoridis. 2007. A probabilistic approach to source code
+ping. Proceedings of the ACM Symposium on Applied Comput- authorship identification. In Fourth International Conference on
+ing, 1562–1569. https://doi.org/10.1145/3477314.3507304 Information Technology (ITNG’07). IEEE, 243–248.
+
+[15] Eleni Constantinou and Georgia M. Kapitsaki. 2016. Identifying [31] Mario Linares-Vásquez, Kamal Hossen, Hoang Dang, Huzefa
+Developers’ Expertise in Social Coding Platforms. In 2016 42th Kagdi, Malcom Gethers, and Denys Poshyvanyk. 2012. Triaging
+Euromicro Conference on Software Engineering and Advanced incoming change requests: Bug or commit history, or code
+
+11
+
+
+
+authorship?. In 2012 28th IEEE International Conference on Practice. 181–190.
+Software Maintenance (ICSM). IEEE, 451–460. [43] Chakkrit Tantithamthavorn, Ahmed E. Hassan, and Kenichi
+
+[32] Qianjun Liu, Shouling Ji, Changchang Liu, and Chunming Wu. Matsumoto. 2019. The Impact of Class Rebalancing Techniques
+2021. A practical black-box attack on source code authorship on the Performance and Interpretation of Defect Prediction
+identification classifiers. IEEE Transactions on Information Models. IEEE Transactions on Software Engineering (TSE)
+Forensics and Security 16 (2021), 3620–3633. (2019).
+
+[33] Andrew Meneely and Laurie Williams. 2009. Secure open [44] Chakkrit Tantithamthavorn, Shane McIntosh, Ahmed E Hassan,
+source collaboration: an empirical study of linus’ law. In Akinori Ihara, and Kenichi Matsumoto. 2015. The impact of
+Proceedings of the 16th ACM conference on Computer and mislabelling on the performance and interpretation of defect
+communications security. 453–462. prediction models. In 2015 IEEE/ACM 37th IEEE International
+
+[34] Xiaozhu Meng, Barton P Miller, William R Williams, and Conference on Software Engineering, Vol. 1. IEEE, 812–823.
+Andrew R Bernat. 2013. Mining software repositories for [45] Chakkrit Tantithamthavorn, Shane McIntosh, Ahmed E Hassan,
+accurate authorship. In 2013 IEEE international conference on and Kenichi Matsumoto. 2016. Automated Parameter Optimiza-
+software maintenance. IEEE, 250–259. tion of Classification Techniques for Defect Prediction Models.
+
+[35] Nachiappan Nagappan, Brendan Murphy, and Victor Basili. In Proceedings of the International Conference on Software
+2008. The influence of organizational structure on software Engineering (ICSE). 321–332.
+quality. In 2008 ACM/IEEE 30th International Conference on [46] Chakkrit Tantithamthavorn, Shane McIntosh, Ahmed E Hassan,
+Software Engineering. IEEE, 521–530. and Kenichi Matsumoto. 2017. An Empirical Comparison of
+
+[36] Martin E Nordberg. 2003. Managing code ownership. IEEE Model Validation Techniques for Defect Prediction Models.
+software 20, 2 (2003), 26–33. Transactions on Software Engineering (TSE) 43, 1 (2017), 1–
+
+[37] Edson Oliveira, Eduardo Fernandes, Igor Steinmacher, Marco 18.
+Cristo, Tayana Conte, and Alessandro Garcia. 2020. Code [47] Chakkrit Tantithamthavorn, Shane McIntosh, Ahmed E. Hassan,
+and commit metrics of developer productivity: a study on team and Kenichi Matsumoto. 2019. The Impact of Automated
+leaders perceptions. Empirical Software Engineering 25 (2020), Parameter Optimization on Defect Prediction Models. (2019).
+2519–2549. [48] Patanamon Thongtanunam, Shane McIntosh, Ahmed E Hassan,
+
+[38] Foyzur Rahman and Premkumar Devanbu. 2011. Ownership, and Hajimu Iida. 2016. Revisiting Code Ownership and its
+experience and defects: a fine-grained study of authorship. Relationship with Software Quality in the Scope of Modern
+In Proceedings of the International Conference on Software Code Review. In Proceedings of the International Conference
+Engineering (ICSE). 491–500. on Software Engineering (ICSE). 1039–1050.
+
+[39] Foyzur Rahman and Premkumar Devanbu. 2013. How, and [49] Patanamon Thongtanunam, Shane McIntosh, Ahmed E Hassan,
+Why, Process Metrics are Better. In Proceedings of the Interna- and Hajimu Iida. 2017. Review Participation in Modern Code
+tional Conference on Software Engineering (ICSE). 432–441. Review. Empirical Software Engineering (ESEM) 22, 2 (2017),
+
+[40] Marco Tulio Ribeiro, Sameer Singh, and Carlos Guestrin. 2016. 768–817.
+” Why should i trust you?” Explaining the predictions of any [50] Farhan Ullah, Junfeng Wang, Sohail Jabbar, Fadi Al-Turjman,
+classifier. In Proceedings of the 22nd ACM SIGKDD interna- and Mamoun Alazab. 2019. Source code authorship attribution
+tional conference on knowledge discovery and data mining. using hybrid approach of program dependence graph and deep
+1135–1144. learning model. IEEE Access 7 (2019), 141987–141999.
+
+[41] Romain Robbes and David Röthlisberger. 2013. Using devel- [51] Elaine J Weyuker, Thomas J Ostrand, and Robert M Bell.
+oper interaction data to compare expertise metrics. In 2013 10th 2008. Do too many cooks spoil the broth? Using the number
+Working Conference on Mining Software Repositories (MSR). of developers to enhance defect prediction models. Empirical
+297–300. https://doi.org/10.1109/MSR.2013.6624041 Software Engineering 13, 5 (2008), 539–559.
+
+[42] Caitlin Sadowski, Emma Söderberg, Luke Church, Michal [52] Suraj Yatish, Jirayus Jiarpakdee, Patanamon Thongtanunam,
+Sipko, and Alberto Bacchelli. 2018. Modern code review: a and Chakkrit Tantithamthavorn. 2019. Mining software defects:
+case study at google. In Proceedings of the 40th International should we consider affected releases?. In 2019 IEEE/ACM
+Conference on Software Engineering: Software Engineering in 41st International Conference on Software Engineering (ICSE).
+
+IEEE, 654–665.
+
+12
