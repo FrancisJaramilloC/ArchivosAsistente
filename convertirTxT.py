@@ -1,12 +1,10 @@
 from PyPDF2 import PdfReader
 import os
 
-# Directorio donde pusiste los PDFs descargados
-input_dir = "pdfs"  # cámbialo si usas otra carpeta
+input_dir = "pdfs"  
 output_dir = "txts"
 os.makedirs(output_dir, exist_ok=True)
 
-# Procesar todos los archivos PDF en la carpeta
 for filename in os.listdir(input_dir):
     if filename.endswith(".pdf"):
         pdf_path = os.path.join(input_dir, filename)
@@ -21,4 +19,4 @@ for filename in os.listdir(input_dir):
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(text)
 
-        print(f"✅ Convertido: {filename} -> {txt_path}")
+        print(f" Convertido: {filename} -> {txt_path}")
